@@ -73,39 +73,39 @@ function generateTitle(msgs: ChatMessage[]): string {
 
 function DiffCardView({ diff }: { diff: DiffCard }) {
   return (
-    <div className="mt-4 rounded-lg border border-hairline overflow-hidden">
-      <div className="px-4 py-3 bg-surface-2 border-b border-hairline">
-        <span className="text-xs font-medium text-ink-muted">Changes since {diff.sinceDate}</span>
+    <div className="mt-5 rounded-xl border border-hairline overflow-hidden bg-canvas">
+      <div className="px-4 py-3 bg-surface-strong border-b border-hairline">
+        <span className="caption-upper text-muted" style={{ fontSize: "11px" }}>Changes since {diff.sinceDate}</span>
       </div>
       <div className="divide-y divide-hairline">
         {diff.added.length > 0 && (
-          <div className="px-4 py-2.5 flex items-center gap-3">
-            <span className="text-xs text-semantic-success font-mono">+</span>
-            <span className="text-xs text-ink-muted">Added</span>
-            <span className="text-sm text-ink">{diff.added.join(", ")}</span>
+          <div className="px-4 py-3 flex items-center gap-3.5">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-semantic-success/10 text-semantic-success text-xs font-mono font-bold">+</span>
+            <span className="text-xs font-medium text-muted w-14 uppercase">Added</span>
+            <span className="text-sm font-medium text-ink">{diff.added.join(", ")}</span>
           </div>
         )}
         {diff.removed.length > 0 && (
-          <div className="px-4 py-2.5 flex items-center gap-3">
-            <span className="text-xs text-semantic-danger font-mono">-</span>
-            <span className="text-xs text-ink-muted">Removed</span>
-            <span className="text-sm text-ink">{diff.removed.join(", ")}</span>
+          <div className="px-4 py-3 flex items-center gap-3.5">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-semantic-error/10 text-semantic-error text-xs font-mono font-bold">-</span>
+            <span className="text-xs font-medium text-muted w-14 uppercase">Removed</span>
+            <span className="text-sm font-medium text-ink">{diff.removed.join(", ")}</span>
           </div>
         )}
         {diff.changed.length > 0 && (
-          <div className="px-4 py-2.5 flex items-center gap-3">
-            <span className="text-xs text-conflict-warning font-mono">~</span>
-            <span className="text-xs text-ink-muted">Changed</span>
-            <span className="text-sm text-ink">
+          <div className="px-4 py-3 flex items-center gap-3.5">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-conflict-warning/10 text-conflict-warning text-xs font-mono font-bold">~</span>
+            <span className="text-xs font-medium text-muted w-14 uppercase">Changed</span>
+            <span className="text-sm font-medium text-ink">
               {diff.changed.map(([old, nw]) => `${old} → ${nw}`).join(", ")}
             </span>
           </div>
         )}
         {diff.newDecisions.length > 0 && (
-          <div className="px-4 py-2.5 flex items-center gap-3">
-            <span className="text-xs text-primary font-mono">*</span>
-            <span className="text-xs text-ink-muted">New Decisions</span>
-            <span className="text-sm text-ink">{diff.newDecisions.join(", ")}</span>
+          <div className="px-4 py-3 flex items-center gap-3.5">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-mono font-bold">*</span>
+            <span className="text-xs font-medium text-muted w-28 uppercase">New Decisions</span>
+            <span className="text-sm font-medium text-ink">{diff.newDecisions.join(", ")}</span>
           </div>
         )}
       </div>
@@ -117,25 +117,25 @@ function TimelineView({ points }: { points: TimelinePoint[] }) {
   const maxConfidence = Math.max(...points.map((p) => p.confidenceScore));
 
   return (
-    <div className="mt-4 rounded-lg border border-hairline p-4">
-      <span className="text-xs font-medium text-ink-muted mb-3 block">Confidence Timeline</span>
-      <div className="space-y-2.5">
+    <div className="mt-5 rounded-xl border border-hairline p-5 bg-canvas">
+      <span className="caption-upper text-muted mb-4 block" style={{ fontSize: "11px" }}>Confidence Timeline</span>
+      <div className="space-y-3.5">
         {points.map((point, i) => (
           <div key={i} className="flex items-center gap-4">
-            <span className="w-16 text-xs text-ink-tertiary shrink-0">{point.date}</span>
-            <div className="flex-1 h-5 rounded bg-surface-2 overflow-hidden">
+            <span className="w-16 text-xs text-muted font-medium shrink-0">{point.date}</span>
+            <div className="flex-1 h-3 rounded-full bg-surface-strong overflow-hidden">
               <div
-                className="h-full rounded transition-all duration-500"
+                className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${(point.confidenceScore / maxConfidence) * 100}%`,
-                  backgroundColor: point.confidenceScore >= 0.8 ? "#5e6ad2" : point.confidenceScore >= 0.4 ? "#7a7fad" : "#3e3e44",
+                  backgroundColor: point.confidenceScore >= 0.8 ? "#292524" : point.confidenceScore >= 0.4 ? "#777169" : "#a8a29e",
                 }}
               />
             </div>
-            <span className="w-20 text-xs font-mono text-ink-subtle text-right shrink-0">
+            <span className="w-12 text-xs font-mono text-muted text-right shrink-0">
               {Math.round(point.confidenceScore * 100)}%
             </span>
-            <span className="w-20 text-xs text-ink-muted shrink-0">{point.valueSummary}</span>
+            <span className="text-xs font-medium text-body shrink-0">{point.valueSummary}</span>
           </div>
         ))}
       </div>
@@ -289,16 +289,21 @@ export default function AskPage() {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="shrink-0 px-4 md:px-8 pt-6 pb-4 border-b border-hairline flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink" style={{ fontFamily: "Outfit, sans-serif" }}>
-          Ask Synapse
-        </h1>
+    <div className="h-full flex flex-col bg-canvas relative overflow-hidden selection:bg-gradient-sky/40">
+      {/* Soft atmospheric gradient orbs */}
+      <div className="absolute top-[-10%] right-[-10%] w-[450px] h-[450px] orb-sky opacity-20 blur-[110px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-15%] w-[400px] h-[400px] orb-peach opacity-20 blur-[100px] pointer-events-none" />
+
+      <div className="shrink-0 px-6 md:px-12 pt-6 pb-4 border-b border-hairline flex items-center justify-between bg-canvas/80 backdrop-blur-md relative z-10">
+        <div>
+          <div className="caption-upper text-muted" style={{ fontSize: "11px" }}>Recall & queries</div>
+          <h1 className="display-sm text-ink mt-0.5">Ask Synapse</h1>
+        </div>
         <div className="flex items-center gap-2">
           <div className="relative" ref={historyRef}>
             <button
               onClick={() => setShowHistory(v => !v)}
-              className="px-3 py-1.5 rounded-lg bg-surface-2 border border-hairline text-xs text-ink-subtle hover:text-ink hover:bg-surface-3 transition-all duration-150 cursor-pointer flex items-center gap-1.5"
+              className="px-4 py-2 rounded-full bg-surface-card border border-hairline-strong text-xs font-semibold text-body hover:text-ink hover:bg-surface-strong transition-all duration-150 cursor-pointer flex items-center gap-1.5 shadow-sm"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -307,26 +312,26 @@ export default function AskPage() {
               History
             </button>
             {showHistory && (
-              <div className="absolute right-0 top-full mt-2 w-72 max-h-80 overflow-y-auto rounded-lg border border-hairline bg-surface-1 shadow-xl z-50 p-2 space-y-1">
+              <div className="absolute right-0 top-full mt-2 w-72 max-h-80 overflow-y-auto rounded-xl border border-hairline bg-surface-card shadow-lg z-50 p-2 space-y-1">
                 {convIndex.length === 0 ? (
-                  <p className="text-xs text-ink-tertiary text-center py-4">No past conversations</p>
+                  <p className="text-xs text-muted-soft text-center py-5">No past conversations</p>
                 ) : (
                   convIndex.map((conv) => (
                     <div
                       key={conv.id}
                       onClick={() => switchToConversation(conv.id)}
-                      className="w-full text-left px-3 py-2.5 rounded-md hover:bg-surface-2 transition-colors duration-100 cursor-pointer group"
+                      className="w-full text-left px-3.5 py-3 rounded-lg hover:bg-surface-strong transition-colors duration-100 cursor-pointer group"
                     >
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm text-ink truncate">{conv.title}</p>
-                          <p className="text-xs text-ink-tertiary mt-0.5">
-                            {formatDate(conv.updatedAt)} · {conv.messageCount} msg{conv.messageCount > 1 ? "s" : ""}
+                          <p className="text-sm font-medium text-ink truncate">{conv.title}</p>
+                          <p className="text-xs text-muted mt-1">
+                            {formatDate(conv.updatedAt)} &middot; {conv.messageCount} msg{conv.messageCount > 1 ? "s" : ""}
                           </p>
                         </div>
                         <button
                           onClick={(e) => deleteConversation(conv.id, e)}
-                          className="ml-2 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-surface-3 text-ink-tertiary hover:text-semantic-danger transition-all duration-100"
+                          className="ml-2 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-surface-strong/80 text-muted hover:text-semantic-error transition-all duration-100"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -341,7 +346,7 @@ export default function AskPage() {
           </div>
           <button
             onClick={newConversation}
-            className="px-3 py-1.5 rounded-lg bg-surface-2 border border-hairline text-xs text-ink-subtle hover:text-ink hover:bg-surface-3 transition-all duration-150 cursor-pointer flex items-center gap-1.5"
+            className="px-4 py-2 rounded-full bg-surface-card border border-hairline-strong text-xs font-semibold text-body hover:text-ink hover:bg-surface-strong transition-all duration-150 cursor-pointer flex items-center gap-1.5 shadow-sm"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -351,20 +356,20 @@ export default function AskPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin px-4 md:px-8 py-6">
+      <div className="flex-1 overflow-y-auto scrollbar-thin px-6 md:px-12 py-8 relative z-10">
         {messages.length === 0 && !isProcessing && (
-          <div className="h-full flex flex-col items-center justify-center gap-8">
+          <div className="h-full flex flex-col items-center justify-center gap-8 py-10">
             <EmptyState
               icon="chat"
-              title="What do you want to know?"
-              description="Ask about your knowledge graph. Try one of these:"
+              title="What do you want to recall?"
+              description="Ask about your knowledge graph. Synapse will reconcile timelines and structure changes."
             />
-            <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+            <div className="flex flex-wrap gap-2.5 justify-center max-w-xl">
               {promptChips.map((chip) => (
                 <button
                   key={chip}
                   onClick={() => handleSubmit(chip)}
-                  className="px-4 py-2 rounded-pill bg-surface-2 border border-hairline text-sm text-ink-subtle hover:text-ink hover:bg-surface-3 transition-all duration-150 cursor-pointer"
+                  className="px-5 py-2.5 rounded-full border border-hairline-strong text-[14px] text-body hover:text-ink hover:bg-surface-strong hover:border-hairline bg-surface-card shadow-[0_2px_8px_rgba(0,0,0,0.01)] transition-all duration-150 cursor-pointer"
                 >
                   {chip}
                 </button>
@@ -373,22 +378,22 @@ export default function AskPage() {
           </div>
         )}
 
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-3xl mx-auto space-y-8">
           {messages.map((msg) => (
-            <div key={msg.id} className="space-y-2">
+            <div key={msg.id} className="space-y-3">
               <div className="flex justify-end">
-                <div className="px-4 py-2.5 rounded-lg bg-surface-2 border border-hairline max-w-xl">
-                  <p className="text-sm text-ink-muted">{msg.query}</p>
+                <div className="px-5 py-3 rounded-2xl bg-surface-strong/60 border border-hairline max-w-xl shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                  <p className="text-[15px] font-medium text-body-strong leading-relaxed">{msg.query}</p>
                 </div>
               </div>
 
-              <div className="p-6 rounded-lg bg-surface-1 border border-hairline">
-                <p className="text-sm text-ink leading-relaxed">{msg.answer}</p>
+              <div className="p-6 md:p-8 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_20px_rgba(0,0,0,0.01)] space-y-4">
+                <p className="text-[15px] text-body leading-relaxed">{msg.answer}</p>
                 {msg.diffCard && <DiffCardView diff={msg.diffCard} />}
                 {msg.timeline && <TimelineView points={msg.timeline} />}
                 {msg.sources.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-hairline flex items-center gap-2">
-                    <span className="text-xs text-ink-tertiary">Sources:</span>
+                  <div className="mt-5 pt-4 border-t border-hairline flex flex-wrap items-center gap-2">
+                    <span className="caption-upper text-muted" style={{ fontSize: "10px" }}>Ingested Sources:</span>
                     {msg.sources.map((s, i) => (
                       <SourcePill key={i} type={s.type} label={s.label} />
                     ))}
@@ -400,12 +405,14 @@ export default function AskPage() {
 
           {isProcessing && (
             <div className="flex justify-start">
-              <div className="px-5 py-3 rounded-lg bg-surface-1 border border-hairline">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.2s" }} />
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.4s" }} />
-                  <span className="text-sm text-ink-tertiary ml-1">Synapse is thinking...</span>
+              <div className="px-6 py-4 rounded-2xl bg-surface-card border border-hairline shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5 items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.2s" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.4s" }} />
+                  </div>
+                  <span className="text-[13px] font-medium text-muted">Synapse is traversing memory graph…</span>
                 </div>
               </div>
             </div>
@@ -415,7 +422,7 @@ export default function AskPage() {
         </div>
       </div>
 
-      <div className="shrink-0 px-4 md:px-8 py-4 border-t border-hairline pb-20 md:pb-4">
+      <div className="shrink-0 px-6 md:px-12 py-5 border-t border-hairline pb-24 md:pb-6 bg-canvas/80 backdrop-blur-md relative z-10">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <input
             type="text"
@@ -424,17 +431,18 @@ export default function AskPage() {
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="Ask about your knowledge graph..."
             disabled={isProcessing}
-            className="flex-1 px-4 py-3 rounded-lg bg-surface-1 border border-hairline text-sm text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-primary transition-colors duration-150"
+            className="flex-1 px-5 py-3.5 rounded-full bg-surface-card border border-hairline-strong text-sm text-ink placeholder:text-muted-soft focus:outline-none focus:border-ink focus:ring-1 focus:ring-ink/20 shadow-md transition-all duration-200"
           />
           <button
             onClick={() => handleSubmit()}
             disabled={!input.trim() || isProcessing}
-            className="px-4 py-3 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-all duration-150 cursor-pointer"
+            className="px-6 py-3.5 rounded-full bg-primary text-on-primary text-sm font-semibold hover:bg-primary-active disabled:opacity-40 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
           >
-            {isProcessing ? "..." : "Ask"}
+            {isProcessing ? "…" : "Ask"}
           </button>
         </div>
       </div>
     </div>
   );
 }
+

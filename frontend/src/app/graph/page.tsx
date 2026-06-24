@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
-import { getConfidenceColor, tokens } from "@/lib/design-tokens";
+import { getConfidenceColor } from "@/lib/design-tokens";
 import { getGraphSnapshot, forgetNode, getConflictEvents } from "@/lib/api";
 import * as THREE from "three";
 import type { GraphNode, GraphEdge } from "@/lib/types";
@@ -19,15 +19,15 @@ interface NodeDetail extends GraphNode {
 }
 
 const COLORS = {
-  active: "#5e6ad2",
-  superseded: "#7a7fad",
-  rejected: "#e05252",
-  forgotten: "#3e3e44",
-  edge: "#2a2a30",
-  particle: "#8a8f98",
-  fresh: "#5e6ad2",
-  fading: "#7a7fad",
-  stale: "#3e3e44",
+  active: "#292524",
+  superseded: "#777169",
+  rejected: "#dc2626",
+  forgotten: "#d6d3d1",
+  edge: "#e7e5e4",
+  particle: "#777169",
+  fresh: "#292524",
+  fading: "#777169",
+  stale: "#a8a29e",
 };
 
 function createGlowTexture() {
@@ -36,10 +36,10 @@ function createGlowTexture() {
   canvas.height = 128;
   const ctx = canvas.getContext("2d")!;
   const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.15, "rgba(255,255,255,0.8)");
-  gradient.addColorStop(0.4, "rgba(255,255,255,0.3)");
-  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  gradient.addColorStop(0, "rgba(41,37,36,0.3)");
+  gradient.addColorStop(0.2, "rgba(41,37,36,0.15)");
+  gradient.addColorStop(0.5, "rgba(41,37,36,0.05)");
+  gradient.addColorStop(1, "rgba(41,37,36,0)");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 128, 128);
   return new THREE.CanvasTexture(canvas);
@@ -139,15 +139,13 @@ export default function GraphPage() {
       const color = nodeColor(node);
       const group = new THREE.Group();
 
-      const sphereGeo = new THREE.SphereGeometry(node.isDecisionType ? 8 : 6, 32, 32);
+      const sphereGeo = new THREE.SphereGeometry(node.isDecisionType ? 7 : 5, 32, 32);
       const sphereMat = new THREE.MeshPhysicalMaterial({
         color,
-        emissive: color,
-        emissiveIntensity: 0.8,
-        roughness: 0.2,
-        metalness: 0.5,
+        roughness: 0.1,
+        metalness: 0.1,
         clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
+        clearcoatRoughness: 0.05,
       });
       const sphere = new THREE.Mesh(sphereGeo, sphereMat);
       group.add(sphere);
@@ -155,22 +153,22 @@ export default function GraphPage() {
       if (glowTexRef.current) {
         const spriteMat = new THREE.SpriteMaterial({
           map: glowTexRef.current,
-          blending: THREE.AdditiveBlending,
+          blending: THREE.NormalBlending,
           transparent: true,
-          opacity: 0.85,
+          opacity: 0.4,
           color,
           depthWrite: false,
         });
         const sprite = new THREE.Sprite(spriteMat);
-        sprite.scale.set(45, 45, 1);
+        sprite.scale.set(30, 30, 1);
         group.add(sprite);
       }
 
-      const haloGeo = new THREE.TorusGeometry(node.isDecisionType ? 14 : 11, 0.4, 16, 64);
+      const haloGeo = new THREE.TorusGeometry(node.isDecisionType ? 12 : 9, 0.3, 16, 64);
       const haloMat = new THREE.MeshBasicMaterial({
         color,
         transparent: true,
-        opacity: 0.3,
+        opacity: 0.15,
         side: THREE.DoubleSide,
       });
       const halo = new THREE.Mesh(haloGeo, haloMat);
@@ -187,7 +185,7 @@ export default function GraphPage() {
     const geo = new THREE.BufferGeometry();
     const points = [link.source.x || 0, link.source.y || 0, link.source.z || 0, link.target.x || 0, link.target.y || 0, link.target.z || 0];
     geo.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.3 });
+    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4 });
     return new THREE.Line(geo, mat);
   }, []);
 
@@ -201,52 +199,26 @@ export default function GraphPage() {
 
   const empty = !loading && nodes.length === 0 && !error;
 
-  useEffect(() => {
-    if (fgRef.current && !empty && !loading && graphData.nodes.length > 0) {
-      const scene = fgRef.current.scene();
-      if (!scene.getObjectByName("starfield")) {
-        const geometry = new THREE.BufferGeometry();
-        const vertices = [];
-        for (let i = 0; i < 3000; i++) {
-          vertices.push(THREE.MathUtils.randFloatSpread(4000));
-          vertices.push(THREE.MathUtils.randFloatSpread(4000));
-          vertices.push(THREE.MathUtils.randFloatSpread(4000));
-        }
-        geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-        const material = new THREE.PointsMaterial({ 
-          color: 0xffffff, 
-          size: 1.5, 
-          transparent: true, 
-          opacity: 0.4,
-          sizeAttenuation: true
-        });
-        const points = new THREE.Points(geometry, material);
-        points.name = "starfield";
-        scene.add(points);
-      }
-    }
-  }, [empty, loading, graphData]);
-
   return (
-    <div className="h-full flex flex-col md:flex-row overflow-hidden relative">
+    <div className="h-full flex flex-col md:flex-row overflow-hidden relative bg-canvas selection:bg-gradient-mint/40">
       <div ref={containerRef} className="flex-1 relative h-full w-full min-w-0 min-h-0" onDoubleClick={handleBackgroundClick}>
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-canvas">
             <div className="flex flex-col items-center gap-3">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-ink-subtle">Loading graph...</span>
+              <span className="text-sm font-semibold text-muted">Loading memory graph…</span>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-canvas">
             <EmptyState icon="graph" title="Could not load graph" description={error} />
           </div>
         )}
 
         {empty && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-canvas">
             <EmptyState
               icon="graph"
               title="Your graph is empty"
@@ -264,63 +236,63 @@ export default function GraphPage() {
                 height={dimensions.height}
                 graphData={graphData}
                 nodeThreeObject={nodeThreeObject}
-              linkThreeObject={linkThreeObject}
-              linkWidth={0.8}
-              linkOpacity={0.25}
-              linkDirectionalParticles={2}
-              linkDirectionalParticleSpeed={0.005}
-              linkDirectionalParticleWidth={2}
-              linkDirectionalParticleColor={() => COLORS.particle}
-              linkCurvature={0.1}
-              onNodeClick={handleNodeClick}
-              backgroundColor="#010102"
-              nodeLabel="label"
-              nodeResolution={24}
-              d3VelocityDecay={0.3}
-              d3AlphaDecay={0.02}
+                linkThreeObject={linkThreeObject}
+                linkWidth={0.8}
+                linkOpacity={0.3}
+                linkDirectionalParticles={1}
+                linkDirectionalParticleSpeed={0.003}
+                linkDirectionalParticleWidth={2}
+                linkDirectionalParticleColor={() => COLORS.particle}
+                linkCurvature={0.05}
+                onNodeClick={handleNodeClick}
+                backgroundColor="#f5f5f5"
+                nodeLabel="label"
+                nodeResolution={24}
+                d3VelocityDecay={0.3}
+                d3AlphaDecay={0.02}
                 warmupTicks={100}
                 cooldownTicks={30}
                 rendererConfig={{ antialias: true, alpha: true }}
               />
             )}
 
-            <div className="absolute bottom-20 md:bottom-6 left-4 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 px-4 py-2.5 rounded-lg bg-surface-1/80 backdrop-blur-sm border border-hairline z-10 pointer-events-none md:pointer-events-auto">
-              <span className="text-[10px] md:text-xs text-ink-subtle font-medium uppercase tracking-wider md:normal-case md:tracking-normal">Memory Health</span>
-              <div className="flex items-center gap-3 md:gap-4">
+            <div className="absolute bottom-20 md:bottom-6 left-4 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2.5 md:gap-4 px-4 py-3 rounded-full bg-surface-card border border-hairline shadow-md z-10 pointer-events-none md:pointer-events-auto">
+              <span className="text-[11px] text-muted font-semibold uppercase tracking-wider">Memory Health</span>
+              <div className="flex items-center gap-3.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-confidence-fresh shadow-[0_0_6px_rgba(94,106,210,0.8)]" />
-                  <span className="text-xs text-ink-tertiary">Fresh</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                  <span className="text-xs text-body font-medium">Fresh</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-confidence-fading" />
-                  <span className="text-xs text-ink-tertiary">Fading</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-confidence-fading" />
+                  <span className="text-xs text-body font-medium">Fading</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-confidence-stale" />
-                  <span className="text-xs text-ink-tertiary">Stale</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-confidence-stale" />
+                  <span className="text-xs text-body font-medium">Stale</span>
                 </div>
               </div>
             </div>
 
-            <div className="hidden md:flex absolute top-6 left-6 items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-1/60 backdrop-blur-sm border border-hairline z-10 pointer-events-none">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <circle cx="6" cy="6" r="5" stroke="#8a8f98" strokeWidth="1" />
-                <path d="M6 3V6L8 8" stroke="#8a8f98" strokeWidth="1" strokeLinecap="round" />
+            <div className="hidden md:flex absolute top-6 left-6 items-center gap-2.5 px-4 py-2 rounded-full bg-surface-card/85 backdrop-blur-md border border-hairline z-10 pointer-events-none shadow-sm">
+              <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="5" stroke="#777169" strokeWidth="1" />
+                <path d="M6 3v3l2 2" stroke="#777169" strokeWidth="1" strokeLinecap="round" />
               </svg>
-              <span className="text-xs text-ink-tertiary">Drag to orbit &middot; Scroll to zoom &middot; Click a node</span>
+              <span className="text-xs font-medium text-body">Drag to orbit &middot; Scroll to zoom &middot; Click node</span>
             </div>
 
             <Link
               href="/resolve"
-              className="absolute top-4 md:top-6 right-4 md:right-6 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-1/80 backdrop-blur-sm border border-hairline z-10 hover:bg-surface-1 transition-colors duration-150 cursor-pointer shadow-lg md:shadow-none"
+              className="absolute top-4 md:top-6 right-4 md:right-6 flex items-center gap-2 px-4 py-2 rounded-full bg-surface-card border border-hairline z-10 hover:bg-surface-strong transition-all duration-150 cursor-pointer shadow-md"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="6" stroke="#e0a328" strokeWidth="1.3" />
                 <path d="M7 4V7.5M7 10V10.01" stroke="#e0a328" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
-              <span className="text-xs text-ink-muted">What Changed</span>
+              <span className="text-xs font-semibold text-body">What Changed</span>
               {conflictCount > 0 && (
-                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-conflict-warning/20 border border-conflict-warning/30 text-xs font-medium text-conflict-warning">
+                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-conflict-warning/15 border border-conflict-warning/30 text-xs font-bold text-conflict-warning">
                   {conflictCount}
                 </span>
               )}
@@ -330,12 +302,12 @@ export default function GraphPage() {
       </div>
 
       {selectedNode && !empty && (
-        <div className="absolute inset-x-0 bottom-0 top-auto md:relative md:w-[380px] md:h-full border-t md:border-t-0 md:border-l border-hairline bg-surface-1/95 md:bg-surface-1 backdrop-blur-xl md:backdrop-blur-none overflow-y-auto scrollbar-thin z-20 max-h-[60vh] md:max-h-full rounded-t-2xl md:rounded-none shadow-[0_-10px_40px_rgba(0,0,0,0.3)] md:shadow-none">
-          <div className="p-4 md:p-6 pb-24 md:pb-6">
+        <div className="absolute inset-x-0 bottom-0 top-auto md:relative md:w-[380px] md:h-full border-t md:border-t-0 md:border-l border-hairline bg-surface-card/95 md:bg-surface-card backdrop-blur-xl md:backdrop-blur-none overflow-y-auto scrollbar-thin z-20 max-h-[60vh] md:max-h-full rounded-t-2xl md:rounded-none shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
+          <div className="p-6 pb-24 md:pb-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <span
-                  className="w-3 h-3 rounded-full shadow-[0_0_8px_rgba(94,106,210,0.6)]"
+                  className="w-3.5 h-3.5 rounded-full"
                   style={{ backgroundColor: nodeColor(selectedNode) }}
                 />
                 <h3 className="text-base font-semibold text-ink tracking-tight">{selectedNode.label}</h3>
@@ -345,7 +317,7 @@ export default function GraphPage() {
                   setSelectedNode(null);
                   if (fgRef.current) fgRef.current.cameraPosition({ x: 0, y: 0, z: 250 }, { x: 0, y: 0, z: 0 }, 800);
                 }}
-                className="text-ink-tertiary hover:text-ink transition-colors duration-150 cursor-pointer"
+                className="text-muted hover:text-ink transition-colors duration-150 cursor-pointer"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -353,43 +325,43 @@ export default function GraphPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <span className="text-xs text-ink-tertiary uppercase tracking-wider">Confidence</span>
-                <div className="mt-1">
+                <span className="caption-upper text-muted" style={{ fontSize: "10px" }}>Confidence</span>
+                <div className="mt-1.5">
                   <ConfidenceBadge level={getConfidenceColor(selectedNode.confidenceScore)} score={selectedNode.confidenceScore} />
                 </div>
               </div>
 
               {selectedNode.summary && (
                 <div>
-                  <span className="text-xs text-ink-tertiary uppercase tracking-wider">Summary</span>
-                  <p className="mt-1 text-sm text-ink-muted leading-relaxed">{selectedNode.summary}</p>
+                  <span className="caption-upper text-muted" style={{ fontSize: "10px" }}>Summary</span>
+                  <p className="mt-1.5 text-[14px] text-body leading-relaxed">{selectedNode.summary}</p>
                 </div>
               )}
 
               {selectedNode.sourceProvenance && (
                 <div>
-                  <span className="text-xs text-ink-tertiary uppercase tracking-wider">Source</span>
-                  <p className="mt-1 text-sm text-ink-muted">{selectedNode.sourceProvenance}</p>
+                  <span className="caption-upper text-muted" style={{ fontSize: "10px" }}>Source</span>
+                  <p className="mt-1.5 text-sm text-body font-medium">{selectedNode.sourceProvenance}</p>
                 </div>
               )}
 
               <div>
-                <span className="text-xs text-ink-tertiary uppercase tracking-wider">Last reinforced</span>
-                <p className="mt-1 text-sm text-ink-muted">{selectedNode.lastReinforcedAt || "Unknown"}</p>
+                <span className="caption-upper text-muted" style={{ fontSize: "10px" }}>Last reinforced</span>
+                <p className="mt-1.5 text-sm text-body">{selectedNode.lastReinforcedAt || "Unknown"}</p>
               </div>
 
               <div>
-                <span className="text-xs text-ink-tertiary uppercase tracking-wider">Status</span>
-                <div className="mt-1">
+                <span className="caption-upper text-muted" style={{ fontSize: "10px" }}>Status</span>
+                <div className="mt-1.5">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill text-xs font-medium ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
                       selectedNode.status === "active"
                         ? "bg-semantic-success/10 text-semantic-success"
                         : selectedNode.status === "superseded"
                           ? "bg-conflict-warning/10 text-conflict-warning"
-                          : "bg-surface-3 text-ink-tertiary"
+                          : "bg-surface-strong text-muted"
                     }`}
                   >
                     <span
@@ -398,7 +370,7 @@ export default function GraphPage() {
                           ? "bg-semantic-success"
                           : selectedNode.status === "superseded"
                             ? "bg-conflict-warning"
-                            : "bg-ink-tertiary"
+                            : "bg-muted"
                       }`}
                     />
                     {selectedNode.status}
@@ -410,7 +382,7 @@ export default function GraphPage() {
             <div className="mt-8 pt-6 border-t border-hairline">
               <button
                 onClick={handleForgetNode}
-                className="w-full px-4 py-2 rounded-md bg-semantic-danger/10 text-semantic-danger text-sm font-medium hover:bg-semantic-danger/20 transition-colors duration-150 cursor-pointer"
+                className="w-full px-4 py-2.5 rounded-full bg-semantic-error/10 border border-semantic-error/20 text-semantic-error text-sm font-semibold hover:bg-semantic-error/20 transition-all duration-150 cursor-pointer"
               >
                 Forget this node
               </button>
@@ -421,3 +393,4 @@ export default function GraphPage() {
     </div>
   );
 }
+

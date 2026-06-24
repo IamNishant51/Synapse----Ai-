@@ -1,42 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --color-canvas: #010102;
-  --color-surface-1: #0f1011;
-  --color-surface-2: #141516;
-  --color-surface-3: #18191a;
-  --color-surface-4: #191a1b;
-  --color-primary: #5e6ad2;
-  --color-primary-hover: #828fff;
-  --color-primary-focus: #5e69d1;
+  /* Brand & Accent */
+  --color-primary: #292524;
+  --color-primary-active: #0c0a09;
   --color-on-primary: #ffffff;
-  --color-ink: #f7f8f8;
-  --color-ink-muted: #d0d6e0;
-  --color-ink-subtle: #8a8f98;
-  --color-ink-tertiary: #62666d;
-  --color-hairline: #23252a;
-  --color-hairline-strong: #34343a;
-  --color-hairline-tertiary: #3e3e44;
-  --color-confidence-fresh: #5e6ad2;
-  --color-confidence-fading: #7a7fad;
-  --color-confidence-stale: #3e3e44;
+
+  /* Canvas */
+  --color-canvas: #f5f5f5;
+  --color-canvas-soft: #fafafa;
+  --color-canvas-deep: #0c0a09;
+
+  /* Surface */
+  --color-surface-card: #ffffff;
+  --color-surface-strong: #f0efed;
+  --color-surface-dark: #0c0a09;
+  --color-surface-dark-elevated: #1c1917;
+
+  /* Text */
+  --color-ink: #0c0a09;
+  --color-body: #4e4e4e;
+  --color-body-strong: #292524;
+  --color-muted: #777169;
+  --color-muted-soft: #a8a29e;
+  --color-on-dark: #ffffff;
+  --color-on-dark-soft: #a8a29e;
+
+  /* Hairlines */
+  --color-hairline: #e7e5e4;
+  --color-hairline-soft: #f0efed;
+  --color-hairline-strong: #d6d3d1;
+
+  /* Atmospheric Gradient Stops */
+  --color-gradient-mint: #a7e5d3;
+  --color-gradient-peach: #f4c5a8;
+  --color-gradient-lavender: #c8b8e0;
+  --color-gradient-sky: #a8c8e8;
+  --color-gradient-rose: #e8b8c4;
+
+  /* Semantic */
+  --color-semantic-success: #16a34a;
+  --color-semantic-error: #dc2626;
+
+  /* Legacy aliases so existing app pages don't break */
+  --color-surface-1: #ffffff;
+  --color-surface-2: #f0efed;
+  --color-surface-3: #e7e5e4;
+  --color-ink-muted: #777169;
+  --color-ink-subtle: #a8a29e;
+  --color-ink-tertiary: #777169;
+  --color-primary-hover: #0c0a09;
+  --color-semantic-danger: #dc2626;
   --color-conflict-warning: #e0a328;
-  --color-semantic-success: #27a644;
-  --color-semantic-danger: #e5484d;
+  --color-confidence-fresh: #292524;
+  --color-confidence-fading: #777169;
+  --color-confidence-stale: #a8a29e;
 }
 
 body {
-  background: #010102;
-  color: #f7f8f8;
-  font-family: "Geist", sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Display typography — EB Garamond (Waldenburg substitute) */
+.display-mega {
+  font-family: 'EB Garamond', 'Times New Roman', serif;
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -1.92px;
+}
+.display-xl {
+  font-family: 'EB Garamond', 'Times New Roman', serif;
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  font-weight: 300;
+  line-height: 1.08;
+  letter-spacing: -0.96px;
+}
+.display-lg {
+  font-family: 'EB Garamond', 'Times New Roman', serif;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 300;
+  line-height: 1.17;
+  letter-spacing: -0.36px;
+}
+.display-md {
+  font-family: 'EB Garamond', 'Times New Roman', serif;
+  font-size: clamp(1.375rem, 2.5vw, 2rem);
+  font-weight: 300;
+  line-height: 1.13;
+  letter-spacing: -0.32px;
+}
+.display-sm {
+  font-family: 'EB Garamond', 'Times New Roman', serif;
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+/* Caption uppercase — editorial label */
+.caption-upper {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.96px;
+  text-transform: uppercase;
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #23252a transparent;
+    scrollbar-color: #d6d3d1 transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -45,17 +127,25 @@ body {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #23252a;
+    background-color: #d6d3d1;
     border-radius: 3px;
   }
 }
 
-/* Landing page radial gradient for the orb */
-.bg-gradient-radial {
-  background: radial-gradient(circle, var(--tw-gradient-from) 0%, var(--tw-gradient-to) 70%);
-}
+/* Gradient orbs — atmospheric decoration only */
+.orb-mint { background: radial-gradient(circle, #a7e5d3 0%, transparent 70%); }
+.orb-peach { background: radial-gradient(circle, #f4c5a8 0%, transparent 70%); }
+.orb-lavender { background: radial-gradient(circle, #c8b8e0 0%, transparent 70%); }
+.orb-sky { background: radial-gradient(circle, #a8c8e8 0%, transparent 70%); }
+.orb-rose { background: radial-gradient(circle, #e8b8c4 0%, transparent 70%); }
 
 @keyframes shimmer {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
+}
+
+@keyframes orb-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(5%, -3%) scale(1.03); }
+  66% { transform: translate(-3%, 4%) scale(0.97); }
 }
