@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${inter.variable} ${garamond.variable} h-full antialiased`}
     >
-      <body className="h-full bg-canvas text-ink" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <body className="h-full bg-canvas text-ink">
         <LayoutWrapper>{children}</LayoutWrapper>
       </body>
     </html>

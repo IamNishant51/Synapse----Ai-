@@ -101,35 +101,52 @@ def db_init():
     # Seed default data exactly once, tracked in db_metadata
     cursor.execute("CREATE TABLE IF NOT EXISTS db_metadata (key TEXT PRIMARY KEY, value TEXT)")
     cursor.execute("SELECT COUNT(*) FROM db_metadata WHERE key='seeded'")
-    if cursor.fetchone()[0] == 0:
+    is_seeded = cursor.fetchone()[0] > 0
+    
+    cursor.execute("SELECT COUNT(*) FROM sources")
+    has_sources = cursor.fetchone()[0] > 0
+    
+    if not is_seeded or not has_sources:
+        # Clear database to prevent primary key conflicts on re-seeding
+        cursor.execute("DELETE FROM db_metadata WHERE key='seeded'")
+        cursor.execute("DELETE FROM sources WHERE id IN ('1', '2', '3')")
+        cursor.execute("DELETE FROM conflicts WHERE id IN ('1', '2', '3')")
+        cursor.execute("DELETE FROM reconciliation_log WHERE id IN ('log1', 'log2', 'log3', 'log4', 'log5', 'log6', 'log7')")
+        cursor.execute("DELETE FROM confidence_history WHERE id IN ('ch1', 'ch2', 'ch3', 'ch4')")
+
         # Seed default sources
-        cursor.execute("INSERT INTO sources (id, type, label, url, ingested_at, status) VALUES ('1', 'conversation', 'project-notes.md', NULL, 'Jun 20, 2026', 'ready')")
-        cursor.execute("INSERT INTO sources (id, type, label, url, ingested_at, status) VALUES ('2', 'conversation', 'ChatGPT — backend planning', NULL, 'Mar 2, 2026', 'ready')")
+        cursor.execute("INSERT INTO sources (id, type, label, url, ingested_at, status) VALUES ('1', 'article', 'DESIGN-elevenlabs.md', NULL, 'Jun 24, 2026', 'ready')")
+        cursor.execute("INSERT INTO sources (id, type, label, url, ingested_at, status) VALUES ('2', 'article', 'AGENTS.md', NULL, 'Jun 24, 2026', 'ready')")
+        cursor.execute("INSERT INTO sources (id, type, label, url, ingested_at, status) VALUES ('3', 'article', 'cognee_hackathon.md', NULL, 'Jun 29, 2026', 'ready')")
         
         # Seed default conflicts
         cursor.execute("""
         INSERT INTO conflicts (id, old_node_summary, old_node_date, old_node_source, new_node_summary, new_node_date, new_node_source, topic, relationship, llm_confidence, status, created_at)
-        VALUES ('1', 'Using Postgres for the main datastore', 'Mar 2, 2026', 'ChatGPT — backend planning', 'Switched everything to Supabase last week', 'Jun 20, 2026', 'project-notes.md', 'Database choice', 'supersedes', 0.94, 'pending', '2026-06-20T14:00:00Z')
+        VALUES ('1', 'Keep canvas (#010102) as the only background — the whole app stays dark.', 'Jun 29, 2026', 'cognee_hackathon.md', 'The base canvas is off-white (#f5f5f5) holding warm near-black ink (#292524) — no developer-tools dark canvas.', 'Jun 24, 2026', 'DESIGN-elevenlabs.md', 'Canvas Theme', 'contradicts', 0.94, 'pending', '2026-06-24T14:00:00Z')
         """)
         cursor.execute("""
         INSERT INTO conflicts (id, old_node_summary, old_node_date, old_node_source, new_node_summary, new_node_date, new_node_source, topic, relationship, llm_confidence, status, created_at)
-        VALUES ('2', 'Using JWT for authentication', 'Mar 2, 2026', 'ChatGPT — backend planning', 'Authentication switched from JWT to Clerk', 'Jun 20, 2026', 'project-notes.md', 'Auth provider', 'supersedes', 0.88, 'pending', '2026-06-20T14:05:00Z')
+        VALUES ('2', 'FastAPI backend has zero access control of its own (unprotected endpoints).', 'Jun 29, 2026', 'cognee_hackathon.md', 'FastAPI backend requires shared-secret access control via X-Synapse-Key header.', 'Jun 24, 2026', 'AGENTS.md', 'Backend Security', 'supersedes', 0.88, 'pending', '2026-06-24T14:05:00Z')
+        """)
+        cursor.execute("""
+        INSERT INTO conflicts (id, old_node_summary, old_node_date, old_node_source, new_node_summary, new_node_date, new_node_source, topic, relationship, llm_confidence, status, created_at)
+        VALUES ('3', 'Outfit (Headlines) — brings a futuristic geometric character suitable for a \"memory graph\" product.', 'Jun 29, 2026', 'cognee_hackathon.md', 'Display runs Waldenburg Light at weight 300 — the editorial signature.', 'Jun 24, 2026', 'DESIGN-elevenlabs.md', 'Typography Choice', 'contradicts', 0.82, 'pending', '2026-06-24T14:10:00Z')
         """)
         
         # Seed reconciliation log
-        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, new_summary, source, created_at) VALUES ('log1', 'added', 'tech stack', 'Supabase (database)', 'project-notes.md', '2026-06-20T14:00:00Z')")
-        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, new_summary, source, created_at) VALUES ('log2', 'added', 'tech stack', 'Next.js 15 (frontend)', 'project-notes.md', '2026-06-20T14:00:00Z')")
-        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, new_summary, source, created_at) VALUES ('log3', 'added', 'tech stack', 'Clerk (auth)', 'project-notes.md', '2026-06-20T14:00:00Z')")
-        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, old_summary, new_summary, source, created_at) VALUES ('log4', 'changed', 'tech stack', 'Postgres', 'Supabase', 'project-notes.md', '2026-06-20T14:00:00Z')")
-        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, old_summary, created_at) VALUES ('log5', 'removed', 'tech stack', 'MongoDB', '2026-06-20T14:00:00Z')")
-        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, old_summary, created_at) VALUES ('log6', 'removed', 'tech stack', 'JWT', '2026-06-20T14:00:00Z')")
-        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, new_summary, created_at) VALUES ('log7', 'new_decision', 'tech stack', 'Multi-agent architecture', '2026-06-20T14:00:00Z')")
+        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, new_summary, source, created_at) VALUES ('log1', 'added', 'Canvas Theme', 'Off-white (#f5f5f5) canvas background', 'DESIGN-elevenlabs.md', '2026-06-24T14:00:00Z')")
+        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, new_summary, source, created_at) VALUES ('log2', 'added', 'Backend Security', 'FastAPI header checking via X-Synapse-Key', 'AGENTS.md', '2026-06-24T14:00:00Z')")
+        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, new_summary, source, created_at) VALUES ('log3', 'added', 'Typography Choice', 'Waldenburg Light serif font', 'DESIGN-elevenlabs.md', '2026-06-24T14:00:00Z')")
+        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, old_summary, new_summary, source, created_at) VALUES ('log4', 'changed', 'Canvas Theme', 'Dark canvas (#010102)', 'Off-white (#f5f5f5) canvas', 'DESIGN-elevenlabs.md', '2026-06-24T14:00:00Z')")
+        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, old_summary, created_at) VALUES ('log5', 'removed', 'Canvas Theme', 'Dark layout default', '2026-06-24T14:00:00Z')")
+        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, old_summary, created_at) VALUES ('log6', 'removed', 'Typography Choice', 'Outfit sans font', '2026-06-24T14:00:00Z')")
+        cursor.execute("INSERT INTO reconciliation_log (id, event_type, topic, new_summary, created_at) VALUES ('log7', 'new_decision', 'Backend Security', 'CORS restricted to frontend domain', '2026-06-24T14:00:00Z')")
         
         # Seed confidence history
-        cursor.execute("INSERT INTO confidence_history (id, topic, value_summary, confidence_score, reason, date) VALUES ('ch1', 'Database choice', 'Postgres', 0.92, 'initial_ingest', 'Mar 2, 2026')")
-        cursor.execute("INSERT INTO confidence_history (id, topic, value_summary, confidence_score, reason, date) VALUES ('ch2', 'Database choice', 'Postgres', 0.80, 'decay_tick', 'Apr 1, 2026')")
-        cursor.execute("INSERT INTO confidence_history (id, topic, value_summary, confidence_score, reason, date) VALUES ('ch3', 'Database choice', 'Postgres', 0.52, 'decay_tick', 'May 1, 2026')")
-        cursor.execute("INSERT INTO confidence_history (id, topic, value_summary, confidence_score, reason, date) VALUES ('ch4', 'Database choice', 'Supabase', 0.95, 'superseded', 'Jun 20, 2026')")
+        cursor.execute("INSERT INTO confidence_history (id, topic, value_summary, confidence_score, reason, date) VALUES ('ch1', 'Canvas Theme', 'Dark canvas (#010102)', 0.92, 'initial_ingest', 'Jun 29, 2026')")
+        cursor.execute("INSERT INTO confidence_history (id, topic, value_summary, confidence_score, reason, date) VALUES ('ch2', 'Canvas Theme', 'Dark canvas (#010102)', 0.80, 'decay_tick', 'Jul 1, 2026')")
+        cursor.execute("INSERT INTO confidence_history (id, topic, value_summary, confidence_score, reason, date) VALUES ('ch3', 'Canvas Theme', 'Dark canvas (#010102)', 0.52, 'decay_tick', 'Jul 5, 2026')")
+        cursor.execute("INSERT INTO confidence_history (id, topic, value_summary, confidence_score, reason, date) VALUES ('ch4', 'Canvas Theme', 'Off-white (#f5f5f5) canvas', 0.95, 'superseded', 'Jun 24, 2026')")
         
         # Mark as seeded
         cursor.execute("INSERT INTO db_metadata (key, value) VALUES ('seeded', '1')")
@@ -230,6 +247,7 @@ def db_delete_source(source_id: str):
         cursor.execute("DELETE FROM conflicts")
         cursor.execute("DELETE FROM reconciliation_log")
         cursor.execute("DELETE FROM confidence_history")
+        cursor.execute("DELETE FROM db_metadata WHERE key='seeded'")
         
     conn.commit()
     conn.close()

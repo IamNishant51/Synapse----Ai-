@@ -217,6 +217,7 @@ export default function AskPage() {
     showHistory,
     setShowHistory,
     convIndex,
+    activeConvId,
     handleSubmit,
     newConversation,
     switchToConversation,
@@ -259,7 +260,7 @@ export default function AskPage() {
       <div className="absolute top-[-10%] right-[-10%] w-[450px] h-[450px] orb-sky opacity-20 blur-[110px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-15%] w-[400px] h-[400px] orb-peach opacity-20 blur-[100px] pointer-events-none" />
 
-      <div className="shrink-0 px-4 sm:px-6 md:px-12 pt-4 pb-3 sm:pt-6 sm:pb-4 border-b border-hairline flex items-center justify-between bg-canvas/80 backdrop-blur-md relative z-10">
+      <div className="shrink-0 px-3 sm:px-6 md:px-12 pt-3 pb-3 sm:pt-6 sm:pb-4 border-b border-hairline flex items-center justify-between bg-canvas/80 backdrop-blur-md relative z-20">
         <div>
           <div className="caption-upper text-muted" style={{ fontSize: "11px" }}>Recall & queries</div>
           <h1 className="display-sm text-ink mt-0.5">Ask Synapse</h1>
@@ -277,7 +278,7 @@ export default function AskPage() {
               <span className="hidden sm:inline">History</span>
             </button>
             {showHistory && (
-              <div className="absolute right-0 top-full mt-2 w-72 max-h-80 overflow-y-auto rounded-xl border border-hairline bg-surface-card shadow-lg z-50 p-2 space-y-1">
+              <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-24px)] max-h-80 overflow-y-auto rounded-xl border border-hairline bg-surface-card shadow-lg z-50 p-2 space-y-1">
                 {convIndex.length === 0 ? (
                   <p className="text-xs text-muted-soft text-center py-5">No past conversations</p>
                 ) : (
@@ -285,7 +286,11 @@ export default function AskPage() {
                     <div
                       key={conv.id}
                       onClick={() => switchToConversation(conv.id)}
-                      className="w-full text-left px-3.5 py-3 rounded-lg hover:bg-surface-strong transition-colors duration-100 cursor-pointer group"
+                      className={`w-full text-left px-3.5 py-3 rounded-lg transition-colors duration-100 cursor-pointer group border ${
+                        activeConvId === conv.id
+                          ? "bg-surface-strong border-hairline-strong"
+                          : "hover:bg-surface-strong border-transparent"
+                      }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 flex-1">
@@ -324,7 +329,7 @@ export default function AskPage() {
         </div>
       </div>
 
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scrollbar-thin px-6 md:px-12 py-8 relative z-10">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scrollbar-thin px-3 sm:px-6 md:px-12 py-4 sm:py-6 md:py-8 relative z-10">
         {messages.length === 0 && !isProcessing && (
           <div className="h-full flex flex-col items-center justify-center gap-8 py-10">
             <EmptyState
@@ -355,7 +360,7 @@ export default function AskPage() {
                 </div>
               </div>
 
-              <div className="p-6 md:p-8 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_20px_rgba(0,0,0,0.01)] space-y-4">
+              <div className="p-4 sm:p-6 md:p-8 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_20px_rgba(0,0,0,0.01)] space-y-4">
                 <div className="text-[15px] text-body leading-relaxed">
                   {parseMarkdown(msg.answer)}
                 </div>
@@ -392,7 +397,7 @@ export default function AskPage() {
         </div>
       </div>
 
-      <div className="shrink-0 px-4 sm:px-6 md:px-12 pt-4 pb-4 sm:py-5 border-t border-hairline bg-canvas/80 backdrop-blur-md relative z-10">
+      <div className="shrink-0 px-3 sm:px-6 md:px-12 pt-3 pb-3 sm:py-5 border-t border-hairline bg-canvas/80 backdrop-blur-md relative z-20">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <input
             type="text"

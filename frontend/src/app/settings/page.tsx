@@ -4,6 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 import { getDecaySettings, updateDecaySettings, runDecayCheck, getSources, searchNodes, forgetSource, forgetNode } from "@/lib/api";
 import type { Source } from "@/lib/types";
 
+function formatDate(iso: string) {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    if (!iso.includes("T")) return iso;
+    return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return iso;
+  }
+}
+
 export default function SettingsPage() {
   const [decayStart, setDecayStart] = useState(60);
   const [forgetThreshold, setForgetThreshold] = useState(180);
@@ -117,7 +128,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="h-full overflow-y-auto scrollbar-thin bg-canvas">
-        <div className="max-w-3xl mx-auto px-6 md:px-12 pt-10 md:pt-16 pb-24">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 md:px-12 pt-6 md:pt-16 pb-24">
           <div className="mb-10">
             <div className="h-8 w-40 bg-surface-strong animate-pulse rounded-lg mb-2.5" />
             <div className="h-4 w-80 max-w-full bg-surface-strong/60 animate-pulse rounded-lg" />
@@ -126,7 +137,7 @@ export default function SettingsPage() {
           {[1, 2, 3].map((i) => (
             <section key={i} className="mb-10 animate-pulse">
               <div className="h-5 w-32 bg-surface-strong rounded-md mb-4" />
-              <div className="p-6 rounded-2xl bg-surface-card border border-hairline space-y-6">
+              <div className="p-4 sm:p-6 rounded-2xl bg-surface-card border border-hairline space-y-6">
                 <div className="h-4 w-full bg-surface-strong rounded" />
                 <div className="h-4 w-3/4 bg-surface-strong rounded" />
                 <div className="h-10 w-40 bg-surface-strong rounded-full mt-4" />
@@ -144,7 +155,7 @@ export default function SettingsPage() {
       <div className="absolute top-[-10%] right-[-10%] w-[450px] h-[450px] orb-rose opacity-20 blur-[110px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-15%] w-[400px] h-[400px] orb-peach opacity-20 blur-[100px] pointer-events-none" />
 
-      <div className="max-w-3xl mx-auto px-6 md:px-12 pt-10 md:pt-16 pb-24 relative z-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 md:px-12 pt-6 md:pt-16 pb-24 relative z-10">
         <div className="mb-10">
           <div className="caption-upper text-muted mb-2.5">Memory health & decay</div>
           <h1 className="display-lg text-ink">Memory Health.</h1>
@@ -156,7 +167,7 @@ export default function SettingsPage() {
         {/* 1. Decay Settings */}
         <section className="mb-10">
           <div className="caption-upper text-muted mb-3.5">Decay Settings</div>
-          <div className="p-6 md:p-8 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_16px_rgba(0,0,0,0.02)] space-y-7">
+          <div className="p-4 sm:p-6 md:p-8 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_16px_rgba(0,0,0,0.02)] space-y-7">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-semibold text-body-strong">Days until confidence declines</label>
@@ -213,7 +224,7 @@ export default function SettingsPage() {
         {/* 2. Manual Forget */}
         <section className="mb-10">
           <div className="caption-upper text-muted mb-3.5">Manual Forget</div>
-          <div className="p-6 md:p-8 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_16px_rgba(0,0,0,0.02)] space-y-5">
+          <div className="p-4 sm:p-6 md:p-8 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_16px_rgba(0,0,0,0.02)] space-y-5">
             <input
               type="text"
               value={searchQuery}
@@ -262,18 +273,18 @@ export default function SettingsPage() {
               <div className="px-6 py-8 text-center text-sm text-muted-soft">No sources ingested into graph yet.</div>
             )}
             {sources.map((source) => (
-              <div key={source.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4.5 hover:bg-canvas/20 transition-colors">
-                <div className="flex items-start sm:items-center gap-3.5">
-                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+              <div key={source.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 hover:bg-canvas/20 transition-colors">
+                <div className="flex items-start sm:items-center gap-3">
+                  <svg width="16" height="16" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5 sm:mt-0">
                     <circle cx="7" cy="7" r="6" stroke="#777169" strokeWidth="1.2" />
                     <path d="M4 7h6" stroke="#777169" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
-                  <div>
-                    <span className="text-[14px] font-semibold text-ink">{source.label}</span>
-                    <span className="text-[11px] font-semibold text-muted bg-surface-strong px-2 py-0.5 rounded-full ml-2.5 uppercase tracking-wider">{source.type}</span>
+                  <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5">
+                    <span className="text-[14px] font-semibold text-ink truncate">{source.label}</span>
+                    <span className="text-[10px] font-semibold text-muted bg-surface-strong px-2 py-0.5 rounded-full uppercase tracking-wider w-fit">{source.type}</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-4 w-full sm:w-auto mt-2 sm:mt-0 border-t sm:border-0 border-hairline/40 pt-2.5 sm:pt-0">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                     source.status === "ready"
                       ? "bg-semantic-success/10 text-semantic-success"
@@ -290,7 +301,7 @@ export default function SettingsPage() {
                     }`} />
                     {source.status === "processing" ? "processing…" : source.status}
                   </span>
-                  <span className="text-xs text-muted-soft">{source.ingestedAt}</span>
+                  <span className="text-xs text-muted-soft font-mono">{formatDate(source.ingestedAt)}</span>
                   <button
                     onClick={() => handleDeleteSource(source.id)}
                     className="text-xs font-semibold text-semantic-error hover:text-semantic-error/85 transition-colors cursor-pointer"
@@ -306,7 +317,7 @@ export default function SettingsPage() {
         {/* 4. Connected Accounts */}
         <section>
           <div className="caption-upper text-muted mb-3.5">Connected Accounts</div>
-          <div className="p-6 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
+          <div className="p-4 sm:p-6 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <svg width="20" height="20" viewBox="0 0 14 14" fill="none">

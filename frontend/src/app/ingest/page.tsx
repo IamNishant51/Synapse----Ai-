@@ -125,7 +125,7 @@ export default function IngestPage() {
       <div className="absolute top-[-10%] right-[-10%] w-[450px] h-[450px] orb-mint opacity-20 blur-[110px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-15%] w-[400px] h-[400px] orb-peach opacity-20 blur-[100px] pointer-events-none" />
 
-      <div className="max-w-3xl mx-auto px-6 md:px-12 pt-10 md:pt-16 pb-24 relative z-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 md:px-12 pt-6 md:pt-16 pb-24 relative z-10">
         <div className="mb-10">
           <div className="caption-upper text-muted mb-2.5">Memory ingestion</div>
           <h1 className="display-lg text-ink">Add to your memory.</h1>
@@ -134,13 +134,13 @@ export default function IngestPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap md:flex-nowrap gap-1.5 p-1 rounded-full bg-surface-strong w-full md:w-fit mb-8 border border-hairline">
+        <div className="flex flex-row flex-nowrap overflow-x-auto scrollbar-none gap-1.5 p-1 rounded-xl md:rounded-full bg-surface-strong w-full md:w-fit mb-8 border border-hairline">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => { if (!isDisabled) setActiveTab(tab.key); }}
               disabled={isDisabled}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-150 cursor-pointer ${
+              className={`px-5 py-2 rounded-lg md:rounded-full text-sm font-medium transition-all duration-150 cursor-pointer shrink-0 ${
                 activeTab === tab.key
                   ? "bg-surface-card text-ink shadow-[0_2px_8px_rgba(0,0,0,0.03)] border border-hairline"
                   : "text-muted hover:text-ink"
@@ -151,7 +151,7 @@ export default function IngestPage() {
           ))}
         </div>
 
-        <div className="bg-surface-card border border-hairline rounded-2xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)] space-y-6">
+        <div className="bg-surface-card border border-hairline rounded-2xl p-4 sm:p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)] space-y-6">
           {activeTab === "github" && (
             <div className="space-y-5">
               <div>
@@ -223,7 +223,7 @@ export default function IngestPage() {
               />
               <div
                 onClick={handlePdfClick}
-                className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 ${
+                className={`border-2 border-dashed rounded-xl p-6 sm:p-12 text-center transition-all duration-200 ${
                   isDisabled ? "border-hairline opacity-50" : "border-hairline hover:border-primary cursor-pointer bg-canvas/30"
                 }`}
                 onDragOver={(e) => e.preventDefault()}

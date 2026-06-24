@@ -130,6 +130,13 @@ body {
     background-color: #d6d3d1;
     border-radius: 3px;
   }
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Gradient orbs — atmospheric decoration only */

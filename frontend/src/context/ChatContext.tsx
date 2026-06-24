@@ -20,6 +20,7 @@ interface ChatContextType {
   showHistory: boolean;
   setShowHistory: React.Dispatch<React.SetStateAction<boolean>>;
   convIndex: ConversationMeta[];
+  activeConvId: string | null;
   handleSubmit: (query?: string) => Promise<void>;
   newConversation: () => void;
   switchToConversation: (convId: string) => void;
@@ -28,20 +29,9 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-const CUR_KEY = "ask-messages";
 const CONV_INDEX_KEY = "ask-conv-index";
-
-function saveMessagesRaw(msgs: ChatMessage[]) {
-  try { localStorage.setItem(CUR_KEY, JSON.stringify(msgs)); } catch {}
-}
-
-function loadMessagesRaw(): ChatMessage[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem(CUR_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch { return []; }
-}
+const ACTIVE_CONV_KEY = "ask-active-conv-id";
+const OLD_CUR_KEY = "ask-messages";
 
 function getConvIndex(): ConversationMeta[] {
   if (typeof window === "undefined") return [];
@@ -86,19 +76,60 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [convIndex, setConvIndex] = useState<ConversationMeta[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
   
   const epochRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Initialize and migrate on mount
   useEffect(() => {
-    const saved = loadMessagesRaw();
-    if (saved.length > 0) setMessages(saved);
-    setConvIndex(getConvIndex());
-  }, []);
+    const index = getConvIndex();
+    setConvIndex(index);
 
-  useEffect(() => {
-    saveMessagesRaw(messages);
-  }, [messages]);
+    const storedActiveId = localStorage.getItem(ACTIVE_CONV_KEY);
+    if (storedActiveId) {
+      const storedMsgs = loadConvMessages(storedActiveId);
+      if (storedMsgs) {
+        setMessages(storedMsgs);
+        setActiveConvId(storedActiveId);
+        return;
+      }
+    }
+
+    // Migration / Fallback for old schema
+    try {
+      const oldMsgsRaw = localStorage.getItem(OLD_CUR_KEY);
+      if (oldMsgsRaw) {
+        const oldMsgs = JSON.parse(oldMsgsRaw) as ChatMessage[];
+        if (oldMsgs && oldMsgs.length > 0) {
+          const newId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          saveConvMessages(newId, oldMsgs);
+          localStorage.setItem(ACTIVE_CONV_KEY, newId);
+          setActiveConvId(newId);
+          setMessages(oldMsgs);
+          
+          // Add to index
+          const newMeta: ConversationMeta = {
+            id: newId,
+            title: generateTitle(oldMsgs),
+            updatedAt: new Date().toISOString(),
+            messageCount: oldMsgs.length,
+          };
+          const updatedIndex = [newMeta, ...index];
+          persistConvIndex(updatedIndex);
+          setConvIndex(updatedIndex);
+          
+          localStorage.removeItem(OLD_CUR_KEY);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Migration failed:", e);
+    }
+
+    setMessages([]);
+    setActiveConvId(null);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -107,51 +138,43 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const saveCurrentToHistory = useCallback((currentMsgs: ChatMessage[]) => {
-    if (currentMsgs.length === 0) return null;
-    const convId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    saveConvMessages(convId, currentMsgs);
-    const convs = getConvIndex();
-    const updatedConvs = [
-      {
-        id: convId,
-        title: generateTitle(currentMsgs),
-        updatedAt: new Date().toISOString(),
-        messageCount: currentMsgs.length,
-      },
-      ...convs
-    ];
-    persistConvIndex(updatedConvs);
-    setConvIndex(updatedConvs);
-    return convId;
+  const newConversation = useCallback(() => {
+    setMessages([]);
+    setActiveConvId(null);
+    localStorage.removeItem(ACTIVE_CONV_KEY);
+    setShowHistory(false);
   }, []);
 
-  const newConversation = useCallback(() => {
-    saveCurrentToHistory(messages);
-    setMessages([]);
-    try { localStorage.removeItem(CUR_KEY); } catch {}
-  }, [messages, saveCurrentToHistory]);
-
   const switchToConversation = useCallback((convId: string) => {
-    saveCurrentToHistory(messages);
     const stored = loadConvMessages(convId);
     if (stored) {
       setMessages(stored);
+      setActiveConvId(convId);
+      localStorage.setItem(ACTIVE_CONV_KEY, convId);
+    } else {
+      // Remove stale/broken conversation from index
+      const index = getConvIndex();
+      const updated = index.filter(c => c.id !== convId);
+      persistConvIndex(updated);
+      setConvIndex(updated);
     }
-    const convs = getConvIndex();
-    const updatedConvs = convs.filter(c => c.id !== convId);
-    persistConvIndex(updatedConvs);
-    setConvIndex(updatedConvs);
     setShowHistory(false);
-  }, [messages, saveCurrentToHistory]);
+  }, []);
 
   const deleteConversation = useCallback((convId: string) => {
     deleteConvMessages(convId);
-    const convs = getConvIndex();
-    const updatedConvs = convs.filter(c => c.id !== convId);
-    persistConvIndex(updatedConvs);
-    setConvIndex(updatedConvs);
-  }, []);
+    const index = getConvIndex();
+    const updated = index.filter(c => c.id !== convId);
+    persistConvIndex(updated);
+    setConvIndex(updated);
+    
+    // If the deleted conversation is the active one, clear active state
+    if (activeConvId === convId) {
+      setMessages([]);
+      setActiveConvId(null);
+      localStorage.removeItem(ACTIVE_CONV_KEY);
+    }
+  }, [activeConvId]);
 
   const handleSubmit = async (query?: string) => {
     const q = (query || input).trim();
@@ -169,9 +192,59 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await answerQuery(q, controller.signal);
       if (epoch !== epochRef.current) return;
+
       setMessages((prev) => {
         const next = [...prev, response];
-        saveMessagesRaw(next);
+        
+        let currentId = activeConvId;
+        const index = getConvIndex();
+        
+        if (!currentId) {
+          // Generate new conversation ID
+          currentId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          setActiveConvId(currentId);
+          localStorage.setItem(ACTIVE_CONV_KEY, currentId);
+          
+          const newMeta: ConversationMeta = {
+            id: currentId,
+            title: generateTitle(next),
+            updatedAt: new Date().toISOString(),
+            messageCount: next.length,
+          };
+          const updatedIndex = [newMeta, ...index];
+          persistConvIndex(updatedIndex);
+          setConvIndex(updatedIndex);
+        } else {
+          // Update existing conversation in index
+          const existingIndex = index.findIndex(c => c.id === currentId);
+          let updatedIndex = [...index];
+          
+          if (existingIndex !== -1) {
+            const updatedMeta = {
+              ...updatedIndex[existingIndex],
+              updatedAt: new Date().toISOString(),
+              messageCount: next.length,
+              // Update title if it was empty/default
+              title: updatedIndex[existingIndex].title === "Empty conversation" ? generateTitle(next) : updatedIndex[existingIndex].title
+            };
+            // Move to top
+            updatedIndex.splice(existingIndex, 1);
+            updatedIndex = [updatedMeta, ...updatedIndex];
+          } else {
+            // If somehow not in index but has active id
+            const newMeta: ConversationMeta = {
+              id: currentId,
+              title: generateTitle(next),
+              updatedAt: new Date().toISOString(),
+              messageCount: next.length,
+            };
+            updatedIndex = [newMeta, ...updatedIndex];
+          }
+          persistConvIndex(updatedIndex);
+          setConvIndex(updatedIndex);
+        }
+        
+        saveConvMessages(currentId, next);
         return next;
       });
     } catch (e) {
@@ -189,9 +262,51 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         timeline: null,
         timestamp: new Date().toISOString(),
       };
+      
       setMessages((prev) => {
         const next = [...prev, errorMsg];
-        saveMessagesRaw(next);
+        let currentId = activeConvId;
+        const index = getConvIndex();
+
+        if (!currentId) {
+          currentId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          setActiveConvId(currentId);
+          localStorage.setItem(ACTIVE_CONV_KEY, currentId);
+          
+          const newMeta: ConversationMeta = {
+            id: currentId,
+            title: generateTitle(next),
+            updatedAt: new Date().toISOString(),
+            messageCount: next.length,
+          };
+          const updatedIndex = [newMeta, ...index];
+          persistConvIndex(updatedIndex);
+          setConvIndex(updatedIndex);
+        } else {
+          const existingIndex = index.findIndex(c => c.id === currentId);
+          let updatedIndex = [...index];
+          if (existingIndex !== -1) {
+            const updatedMeta = {
+              ...updatedIndex[existingIndex],
+              updatedAt: new Date().toISOString(),
+              messageCount: next.length,
+            };
+            updatedIndex.splice(existingIndex, 1);
+            updatedIndex = [updatedMeta, ...updatedIndex];
+          } else {
+            const newMeta: ConversationMeta = {
+              id: currentId,
+              title: generateTitle(next),
+              updatedAt: new Date().toISOString(),
+              messageCount: next.length,
+            };
+            updatedIndex = [newMeta, ...updatedIndex];
+          }
+          persistConvIndex(updatedIndex);
+          setConvIndex(updatedIndex);
+        }
+        
+        saveConvMessages(currentId, next);
         return next;
       });
     } finally {
@@ -212,6 +327,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         showHistory,
         setShowHistory,
         convIndex,
+        activeConvId,
         handleSubmit,
         newConversation,
         switchToConversation,
