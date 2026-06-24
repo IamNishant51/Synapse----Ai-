@@ -108,7 +108,12 @@ export default function LandingPage() {
   useGSAP(() => {
     const mm = gsap.matchMedia();
 
-    mm.add("(prefers-reduced-motion: no-preference)", () => {
+    mm.add({
+      isDesktop: "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
+      isMobile: "(max-width: 767px) and (prefers-reduced-motion: no-preference)"
+    }, (context) => {
+      const { isDesktop } = context.conditions as Record<string, boolean>;
+
       /* ── Hero entrance ── */
       gsap.set(".fade-up", { y: 24, opacity: 0 });
       gsap.set(".scroll-cue", { y: 0, opacity: 0 });
@@ -171,15 +176,15 @@ export default function LandingPage() {
         }
       });
 
-      /* ── Section 4: Ingestion Stepper & Spiral (Pinned) ── */
+      /* ── Section 4: Ingestion Stepper & Spiral ── */
       const ingestTl = gsap.timeline({
         scrollTrigger: {
           trigger: "#section-ingest",
-          pin: true,
-          start: "top top",
-          end: "+=1800",
+          pin: isDesktop,
+          start: isDesktop ? "top top" : "top 80%",
+          end: isDesktop ? "+=1800" : "bottom 20%",
           scrub: 0.5,
-          anticipatePin: 1
+          anticipatePin: isDesktop ? 1 : 0
         }
       });
 
@@ -212,15 +217,15 @@ export default function LandingPage() {
         }, time);
       });
 
-      /* ── Section 5: What Changed - Meniscus Fusing & Diff UI (Pinned) ── */
+      /* ── Section 5: What Changed - Meniscus Fusing & Diff UI ── */
       const resolveTl = gsap.timeline({
         scrollTrigger: {
           trigger: "#section-resolve",
-          pin: true,
-          start: "top top",
-          end: "+=2200",
+          pin: isDesktop,
+          start: isDesktop ? "top top" : "top 80%",
+          end: isDesktop ? "+=2200" : "bottom 20%",
           scrub: 0.5,
-          anticipatePin: 1
+          anticipatePin: isDesktop ? 1 : 0
         }
       });
 
@@ -453,7 +458,7 @@ export default function LandingPage() {
           </div>
 
           {/* Scattered Source-Cards Mockup Frame */}
-          <div className="md:col-span-7 relative h-[420px] w-full flex items-center justify-center bg-white/30 rounded-3xl border border-[#e7e5e4]/50 overflow-hidden select-none shadow-[inset_0_2px_8px_rgba(0,0,0,0.01)]">
+          <div className="md:col-span-7 relative h-[300px] sm:h-[360px] md:h-[420px] w-full flex items-center justify-center bg-white/30 rounded-3xl border border-[#e7e5e4]/50 overflow-hidden select-none shadow-[inset_0_2px_8px_rgba(0,0,0,0.01)]">
             <div className="absolute inset-0 bg-[radial-gradient(#8080800a_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
             
             {/* Card 1: ChatGPT */}
@@ -729,7 +734,7 @@ export default function LandingPage() {
             <div className="space-y-8 max-w-md">
               <div>
                 <div className="flex justify-between text-xs font-medium mb-3">
-                  <span className="text-[#777169]">Postgres Config · 3 months ago</span>
+                  <span className="text-[#777169]">Backend Security · 3 months ago</span>
                   <span className="font-mono font-semibold text-[#dc2626]" id="decay-score-postgres">0.92</span>
                 </div>
                 <div className="h-2 bg-[#e7e5e4] rounded-full overflow-hidden">
@@ -739,7 +744,7 @@ export default function LandingPage() {
               
               <div>
                 <div className="flex justify-between text-xs font-medium mb-3">
-                  <span className="text-[#0c0a09] font-semibold">Supabase Integration · reinforced today</span>
+                  <span className="text-[#0c0a09] font-semibold">Canvas Theme · reinforced today</span>
                   <span className="font-mono font-semibold text-[#0c0a09]" id="decay-score-supabase">0.00</span>
                 </div>
                 <div className="h-2 bg-[#e7e5e4] rounded-full overflow-hidden">
@@ -750,7 +755,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right Column: Memory Decay Illustration */}
-          <div className="md:col-span-6 flex justify-center items-center relative h-[380px] bg-white border border-[#e7e5e4] rounded-3xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.02)] select-none">
+          <div className="md:col-span-6 flex justify-center items-center relative h-[260px] sm:h-[320px] md:h-[380px] bg-white border border-[#e7e5e4] rounded-3xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.02)] select-none">
             <Image
               src="/images/memory-decay.png"
               alt="Memory Decay Illustration"
@@ -781,7 +786,7 @@ export default function LandingPage() {
           </div>
 
           {/* Non-interactive lightweight SVG graph mockup with parallax */}
-          <div className="md:col-span-7 flex justify-center items-center relative h-[380px] bg-white/20 border border-[#e7e5e4] rounded-3xl overflow-hidden shadow-[inset_0_2px_8px_rgba(0,0,0,0.01)] select-none">
+          <div className="md:col-span-7 flex justify-center items-center relative h-[260px] sm:h-[320px] md:h-[380px] bg-white/20 border border-[#e7e5e4] rounded-3xl overflow-hidden shadow-[inset_0_2px_8px_rgba(0,0,0,0.01)] select-none">
             <svg viewBox="0 0 600 400" className="w-full h-full max-w-[500px]">
               <defs>
                 <linearGradient id="node-grad" x1="0%" y1="0%" x2="100%" y2="100%">

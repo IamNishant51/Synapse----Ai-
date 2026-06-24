@@ -12,6 +12,7 @@ import * as THREE from "three";
 import type { GraphNode, GraphEdge } from "@/lib/types";
 
 const ForceGraph3D = dynamic(() => import("react-force-graph-3d").then((m) => m.default || m), { ssr: false });
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d").then((m) => m.default || m), { ssr: false });
 
 interface NodeDetail extends GraphNode {
   x?: number;
@@ -207,6 +208,13 @@ export default function GraphPage() {
   const glowTexRef = useRef<THREE.CanvasTexture | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [use2d, setUse2d] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("mode") === "2d";
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -324,6 +332,41 @@ export default function GraphPage() {
     [],
   );
 
+  const nodeCanvasObject = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    const label = node.label || "";
+    const size = node.isDecisionType ? 10 : 7;
+    const color = nodeColor(node);
+
+    // Glow effect
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10 / globalScale;
+
+    // Draw node circle
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, size, 0, 2 * Math.PI, false);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // Draw outer halo stroke
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, size + 4, 0, 2 * Math.PI, false);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Reset shadow
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+
+    // Label styling
+    const fontSize = 11 / globalScale;
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#4e4e4e";
+    ctx.fillText(label, node.x, node.y + size + 10);
+  }, []);
+
   const linkThreeObject = useCallback((link: any) => {
     const color = link.confidence >= 0.8 ? COLORS.particle : COLORS.edge;
     const geo = new THREE.BufferGeometry();
@@ -374,35 +417,58 @@ export default function GraphPage() {
         {!empty && !loading && !error && (
           <>
             {dimensions.width > 0 && dimensions.height > 0 && (
-              <ForceGraph3D
-                ref={fgRef}
-                width={dimensions.width}
-                height={dimensions.height}
-                graphData={graphData}
-                nodeThreeObject={nodeThreeObject}
-                linkThreeObject={linkThreeObject}
-                linkWidth={0.8}
-                linkOpacity={0.3}
-                linkDirectionalParticles={1}
-                linkDirectionalParticleSpeed={0.003}
-                linkDirectionalParticleWidth={2}
-                linkDirectionalParticleColor={() => COLORS.particle}
-                linkCurvature={0.05}
-                onNodeClick={handleNodeClick}
-                backgroundColor="#f5f5f5"
-                nodeLabel="label"
-                nodeResolution={24}
-                d3VelocityDecay={0.3}
-                d3AlphaDecay={0.02}
-                warmupTicks={100}
-                cooldownTicks={30}
-                rendererConfig={{ antialias: true, alpha: true }}
-              />
+              use2d ? (
+                <ForceGraph2D
+                  ref={fgRef}
+                  width={dimensions.width}
+                  height={dimensions.height}
+                  graphData={graphData}
+                  nodeCanvasObject={nodeCanvasObject}
+                  linkWidth={0.8}
+                  linkColor={() => COLORS.edge}
+                  linkDirectionalParticles={1}
+                  linkDirectionalParticleSpeed={0.003}
+                  linkDirectionalParticleWidth={2}
+                  linkDirectionalParticleColor={() => COLORS.particle}
+                  onNodeClick={handleNodeClick}
+                  backgroundColor="#f5f5f5"
+                  nodeLabel="label"
+                  d3VelocityDecay={0.3}
+                  d3AlphaDecay={0.02}
+                  warmupTicks={100}
+                  cooldownTicks={30}
+                />
+              ) : (
+                <ForceGraph3D
+                  ref={fgRef}
+                  width={dimensions.width}
+                  height={dimensions.height}
+                  graphData={graphData}
+                  nodeThreeObject={nodeThreeObject}
+                  linkThreeObject={linkThreeObject}
+                  linkWidth={0.8}
+                  linkOpacity={0.3}
+                  linkDirectionalParticles={1}
+                  linkDirectionalParticleSpeed={0.003}
+                  linkDirectionalParticleWidth={2}
+                  linkDirectionalParticleColor={() => COLORS.particle}
+                  linkCurvature={0.05}
+                  onNodeClick={handleNodeClick}
+                  backgroundColor="#f5f5f5"
+                  nodeLabel="label"
+                  nodeResolution={24}
+                  d3VelocityDecay={0.3}
+                  d3AlphaDecay={0.02}
+                  warmupTicks={100}
+                  cooldownTicks={30}
+                  rendererConfig={{ antialias: true, alpha: true }}
+                />
+              )
             )}
 
             <div className="absolute bottom-20 md:bottom-6 left-4 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2.5 md:gap-4 px-4 py-3 rounded-full bg-surface-card border border-hairline shadow-md z-10 pointer-events-none md:pointer-events-auto">
               <span className="text-[11px] text-muted font-semibold uppercase tracking-wider">Memory Health</span>
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3.5 pointer-events-auto">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-primary" />
                   <span className="text-xs text-body font-medium">Fresh</span>
@@ -415,6 +481,13 @@ export default function GraphPage() {
                   <span className="w-2.5 h-2.5 rounded-full bg-confidence-stale" />
                   <span className="text-xs text-body font-medium">Stale</span>
                 </div>
+                <div className="w-px h-3 bg-hairline mx-1" />
+                <button
+                  onClick={() => setUse2d(!use2d)}
+                  className="text-[10px] uppercase tracking-wider text-body font-bold hover:text-primary transition-colors cursor-pointer select-none"
+                >
+                  {use2d ? "Switch to 3D" : "Switch to 2D"}
+                </button>
               </div>
             </div>
 
