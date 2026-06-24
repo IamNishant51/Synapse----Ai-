@@ -161,6 +161,112 @@ function formatDate(iso: string) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+// Inline formatting: Bold (**text**) and Italic (*text*)
+function renderLineContent(line: string) {
+  const parts: React.ReactNode[] = [];
+  let remaining = line;
+  let key = 0;
+  
+  while (remaining.length > 0) {
+    const boldIdx = remaining.indexOf("**");
+    const italicIdx = remaining.indexOf("*");
+    
+    if (boldIdx === -1 && italicIdx === -1) {
+      parts.push(remaining);
+      break;
+    }
+    
+    // Check if bold is closer
+    if (boldIdx !== -1 && (italicIdx === -1 || boldIdx <= italicIdx)) {
+      if (boldIdx > 0) {
+        parts.push(remaining.substring(0, boldIdx));
+      }
+      const endBoldIdx = remaining.indexOf("**", boldIdx + 2);
+      if (endBoldIdx !== -1) {
+        const boldText = remaining.substring(boldIdx + 2, endBoldIdx);
+        parts.push(<strong key={key++} className="font-semibold text-ink">{boldText}</strong>);
+        remaining = remaining.substring(endBoldIdx + 2);
+      } else {
+        parts.push(remaining.substring(boldIdx));
+        break;
+      }
+    } else {
+      // Italic is closer
+      if (italicIdx > 0) {
+        parts.push(remaining.substring(0, italicIdx));
+      }
+      const endItalicIdx = remaining.indexOf("*", italicIdx + 1);
+      if (endItalicIdx !== -1) {
+        const italicText = remaining.substring(italicIdx + 1, endItalicIdx);
+        parts.push(<em key={key++} className="italic text-body-strong">{italicText}</em>);
+        remaining = remaining.substring(endItalicIdx + 1);
+      } else {
+        parts.push(remaining.substring(italicIdx));
+        break;
+      }
+    }
+  }
+  
+  return parts;
+}
+
+function parseMarkdown(text: string) {
+  if (!text) return null;
+  
+  const lines = text.split("\n");
+  
+  return lines.map((line, lineIdx) => {
+    // 1. Check for horizontal rule
+    if (line.trim() === "---") {
+      return <hr key={lineIdx} className="my-4 border-t border-hairline-strong" />;
+    }
+    
+    // 2. Check for headings
+    if (line.startsWith("# ")) {
+      return (
+        <h1 key={lineIdx} className="text-xl font-bold text-ink mt-4 mb-2">
+          {renderLineContent(line.slice(2))}
+        </h1>
+      );
+    }
+    if (line.startsWith("## ")) {
+      return (
+        <h2 key={lineIdx} className="text-lg font-bold text-ink mt-3 mb-1.5">
+          {renderLineContent(line.slice(3))}
+        </h2>
+      );
+    }
+    if (line.startsWith("### ")) {
+      return (
+        <h3 key={lineIdx} className="text-md font-semibold text-ink mt-2 mb-1">
+          {renderLineContent(line.slice(4))}
+        </h3>
+      );
+    }
+    
+    // 3. Bullet points
+    if (line.trim().startsWith("* ") || line.trim().startsWith("- ")) {
+      const cleanLine = line.trim().slice(2);
+      return (
+        <ul key={lineIdx} className="list-disc pl-5 my-1 text-body">
+          <li>{renderLineContent(cleanLine)}</li>
+        </ul>
+      );
+    }
+    
+    // 4. Default paragraph or blank line
+    if (line.trim() === "") {
+      return <div key={lineIdx} className="h-2" />;
+    }
+    
+    return (
+      <p key={lineIdx} className="text-[15px] text-body leading-relaxed mb-2.5 whitespace-pre-wrap">
+        {renderLineContent(line)}
+      </p>
+    );
+  });
+}
+
 export default function AskPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -388,7 +494,9 @@ export default function AskPage() {
               </div>
 
               <div className="p-6 md:p-8 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_20px_rgba(0,0,0,0.01)] space-y-4">
-                <p className="text-[15px] text-body leading-relaxed">{msg.answer}</p>
+                <div className="text-[15px] text-body leading-relaxed">
+                  {parseMarkdown(msg.answer)}
+                </div>
                 {msg.diffCard && <DiffCardView diff={msg.diffCard} />}
                 {msg.timeline && <TimelineView points={msg.timeline} />}
                 {msg.sources.length > 0 && (
