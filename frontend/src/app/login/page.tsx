@@ -24,11 +24,11 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (data.success) {
-        window.location.href = "/graph";
+        router.push("/graph");
       } else {
         setError(data.error || "Incorrect access key");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to connect. Please try again.");
     } finally {
       setLoading(false);
@@ -45,7 +45,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center mb-8">
           {/* Logo */}
           <Image
-            src="/synapse-logo.png"
+            src="/images/synapse-logo.png"
             alt="Synapse"
             width={160}
             height={46}

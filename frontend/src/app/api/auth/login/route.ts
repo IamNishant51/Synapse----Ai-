@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: false, error: "Incorrect access key" }, { status: 401 });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ success: false, error: "Invalid request" }, { status: 400 });
   }
 }

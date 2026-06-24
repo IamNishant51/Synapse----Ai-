@@ -367,7 +367,23 @@ def db_get_confidence_history(topic: Optional[str] = None) -> List[ConfidenceHis
     ]
 
 def db_get_distinct_topics() -> List[str]:
-    """Get all distinct topics from confidence_history that have recorded beliefs."""
+    """Get all distinct topics tracked anywhere in Synapse metadata."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT topic FROM confidence_history
+    UNION
+    SELECT topic FROM reconciliation_log
+    UNION
+    SELECT topic FROM conflicts
+    ORDER BY topic
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [r["topic"] for r in rows]
+
+def db_get_timeline_topics() -> List[str]:
+    """Get topics that have actual confidence timeline data."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT topic FROM confidence_history ORDER BY topic")

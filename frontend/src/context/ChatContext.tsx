@@ -83,52 +83,54 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize and migrate on mount
   useEffect(() => {
-    const index = getConvIndex();
-    setConvIndex(index);
+    Promise.resolve().then(() => {
+      const index = getConvIndex();
+      setConvIndex(index);
 
-    const storedActiveId = localStorage.getItem(ACTIVE_CONV_KEY);
-    if (storedActiveId) {
-      const storedMsgs = loadConvMessages(storedActiveId);
-      if (storedMsgs) {
-        setMessages(storedMsgs);
-        setActiveConvId(storedActiveId);
-        return;
-      }
-    }
-
-    // Migration / Fallback for old schema
-    try {
-      const oldMsgsRaw = localStorage.getItem(OLD_CUR_KEY);
-      if (oldMsgsRaw) {
-        const oldMsgs = JSON.parse(oldMsgsRaw) as ChatMessage[];
-        if (oldMsgs && oldMsgs.length > 0) {
-          const newId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-          saveConvMessages(newId, oldMsgs);
-          localStorage.setItem(ACTIVE_CONV_KEY, newId);
-          setActiveConvId(newId);
-          setMessages(oldMsgs);
-          
-          // Add to index
-          const newMeta: ConversationMeta = {
-            id: newId,
-            title: generateTitle(oldMsgs),
-            updatedAt: new Date().toISOString(),
-            messageCount: oldMsgs.length,
-          };
-          const updatedIndex = [newMeta, ...index];
-          persistConvIndex(updatedIndex);
-          setConvIndex(updatedIndex);
-          
-          localStorage.removeItem(OLD_CUR_KEY);
+      const storedActiveId = localStorage.getItem(ACTIVE_CONV_KEY);
+      if (storedActiveId) {
+        const storedMsgs = loadConvMessages(storedActiveId);
+        if (storedMsgs) {
+          setMessages(storedMsgs);
+          setActiveConvId(storedActiveId);
           return;
         }
       }
-    } catch (e) {
-      console.error("Migration failed:", e);
-    }
 
-    setMessages([]);
-    setActiveConvId(null);
+      // Migration / Fallback for old schema
+      try {
+        const oldMsgsRaw = localStorage.getItem(OLD_CUR_KEY);
+        if (oldMsgsRaw) {
+          const oldMsgs = JSON.parse(oldMsgsRaw) as ChatMessage[];
+          if (oldMsgs && oldMsgs.length > 0) {
+            const newId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            saveConvMessages(newId, oldMsgs);
+            localStorage.setItem(ACTIVE_CONV_KEY, newId);
+            setActiveConvId(newId);
+            setMessages(oldMsgs);
+            
+            // Add to index
+            const newMeta: ConversationMeta = {
+              id: newId,
+              title: generateTitle(oldMsgs),
+              updatedAt: new Date().toISOString(),
+              messageCount: oldMsgs.length,
+            };
+            const updatedIndex = [newMeta, ...index];
+            persistConvIndex(updatedIndex);
+            setConvIndex(updatedIndex);
+            
+            localStorage.removeItem(OLD_CUR_KEY);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Migration failed:", e);
+      }
+
+      setMessages([]);
+      setActiveConvId(null);
+    });
   }, []);
 
   useEffect(() => {

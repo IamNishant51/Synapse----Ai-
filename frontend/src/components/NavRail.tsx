@@ -22,7 +22,7 @@ export default function NavRail() {
       {/* Brand */}
       <div className="hidden md:flex items-center px-5 pt-5 pb-6">
         <Image
-          src="/synapse-logo.png"
+          src="/images/synapse-logo.png"
           alt="Synapse"
           width={96}
           height={28}

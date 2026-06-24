@@ -53,6 +53,7 @@ from database import (
     db_save_confidence_history_entry,
     db_get_confidence_history,
     db_get_distinct_topics,
+    db_get_timeline_topics,
     db_get_decay_settings,
     db_update_decay_settings,
     db_update_source_content,
@@ -722,75 +723,47 @@ async def get_graph_snapshot() -> GraphSnapshot:
     return GraphSnapshot(nodes=nodes, edges=edges)
 
 
-def get_matched_topic(query: str) -> Optional[str]:
-    """
-    Match the user's query against real, currently-existing topics from confidence_history.
-    Uses the same term-overlap approach as get_relevant_db_context.
-    Returns the matched topic, or None if no good match found.
-    """
-    # Get all distinct topics that exist in the database
-    available_topics = db_get_distinct_topics()
-    if not available_topics:
-        return None
-    
+def extract_query_terms(query: str) -> list[str]:
     query_lower = query.lower()
     stopwords = {
         "what", "is", "a", "the", "about", "did", "change", "changed", "how", "why", "who", "where",
         "to", "from", "for", "in", "on", "of", "and", "or", "project", "repo", "github", "source",
         "i", "my", "me", "we", "us", "our", "you", "your", "he", "she", "it", "they", "them",
         "before", "now", "vs", "versus", "after", "then", "believe", "believed", "think", "thought",
-        "since", "earlier", "back"
+        "since", "earlier", "back", "made", "have", "has", "had", "timeline", "decision", "decisions",
     }
     query_terms = [word.strip("?,.!-()\"'") for word in query_lower.split()]
-    query_terms = [word for word in query_terms if word and len(word) > 2 and word not in stopwords]
-    
-    # If no significant terms extracted, return None
-    if not query_terms:
+    return [word for word in query_terms if word and len(word) > 2 and word not in stopwords]
+
+
+def get_term_overlap_score(query_terms: list[str], candidate: str) -> int:
+    candidate_lower = candidate.lower()
+    return sum(1 for term in query_terms if term in candidate_lower)
+
+
+def get_matched_topic(query: str, available_topics: list[str]) -> Optional[str]:
+    """Match a query against the provided list of topics."""
+    query_terms = extract_query_terms(query)
+    if not available_topics or not query_terms:
         return None
-    
-    # Try to find a topic that matches query terms
+
     best_match = None
     best_score = 0
-    
     for topic in available_topics:
-        topic_lower = topic.lower()
-        # Count how many query terms appear in the topic
-        match_count = sum(1 for term in query_terms if term in topic_lower)
-        if match_count > best_score:
-            best_score = match_count
+        score = get_term_overlap_score(query_terms, topic)
+        if score > best_score:
+            best_score = score
             best_match = topic
-    
-    # Also check if query contains keywords that suggest which topic
-    for topic in available_topics:
-        topic_lower = topic.lower()
-        for term in query_terms:
-            # Look for meaningful keyword overlap
-            if (term in topic_lower or 
-                (term in ["canvas", "color", "background", "theme", "design", "palette"] and "canvas" in topic_lower) or
-                (term in ["security", "auth", "access", "header", "key", "control"] and "security" in topic_lower) or
-                (term in ["typography", "font", "text", "serif", "type", "family"] and "typography" in topic_lower)):
-                return topic
-    
-    # If we found a topic with matching terms, return it
+
     if best_match and best_score > 0:
         return best_match
-    
     return None
 
 
 def get_relevant_db_context(query: str, db_sources: list, db_conflicts: list) -> list[str]:
-    query_lower = query.lower()
-    stopwords = {
-        "what", "is", "a", "the", "about", "did", "change", "changed", "how", "why", "who", "where", 
-        "to", "from", "for", "in", "on", "of", "and", "or", "project", "repo", "github", "source",
-        "i", "my", "me", "we", "us", "our", "you", "your", "he", "she", "it", "they", "them", 
-        "before", "now", "vs", "versus", "after", "then", "believe", "believed", "think", "thought"
-    }
-    query_terms = [word.strip("?,.!-()\"'") for word in query_lower.split()]
-    query_terms = [word for word in query_terms if word and len(word) > 2 and word not in stopwords]
-    
+    query_terms = extract_query_terms(query)
     relevant_lines = []
-    
+
     if not query_terms:
         for s in db_sources[:5]:
             relevant_lines.append(f"- Source \"{s.label}\" ({s.type}, ingested {s.ingestedAt})")
@@ -837,6 +810,15 @@ def get_relevant_db_context(query: str, db_sources: list, db_conflicts: list) ->
                 relevant_lines.append(f"  Content: {snippet}")
             
     return relevant_lines
+
+
+def get_ask_topics() -> dict[str, list[str]]:
+    tracked_topics = db_get_distinct_topics()
+    timeline_topics = db_get_timeline_topics()
+    return {
+        "trackedTopics": tracked_topics,
+        "timelineTopics": timeline_topics,
+    }
 
 
 _commits_cache: dict[str, tuple[float, str]] = {}
@@ -906,8 +888,8 @@ async def answer_query(req: RecallRequest) -> ChatMessage:
     graph_ctx_lines = ["Knowledge Graph Contents:"]
     graph_ctx_lines.extend(get_relevant_db_context(req.query, db_sources, db_conflicts))
 
-    # Dynamically inject git commit history for history-related queries if github sources are present
-    history_keywords = {"changed", "change", "changes", "commit", "commits", "history", "git", "since", "repository", "author", "decision", "decided"}
+    # Dynamically inject git commit history only for repo/history-style questions.
+    history_keywords = {"changed", "change", "changes", "commit", "commits", "history", "git", "since", "repository", "repo", "author"}
     if any(k in query for k in history_keywords):
         for s in db_sources:
             if s.type == "github" and s.url:
@@ -915,18 +897,15 @@ async def answer_query(req: RecallRequest) -> ChatMessage:
                 if commits_ctx:
                     graph_ctx_lines.append(commits_ctx)
 
-    # If the user is asking about changes or conflicts, inject the conflict records
-    change_keywords = {"changed", "change", "changes", "conflict", "conflicts", "reconciliation", "since", "before", "decision", "decided", "different", "versus"}
-    if any(k in query for k in change_keywords):
-        if db_conflicts:
-            graph_ctx_lines.append("\n[Active Conflicts & Decisions:]")
-            for c in db_conflicts:
-                graph_ctx_lines.append(
-                    f"- Topic: {c.topic}\n"
-                    f"  Old Belief: {c.oldNodeSummary} (Source: {c.oldNodeSource}, Date: {c.oldNodeDate})\n"
-                    f"  New Belief: {c.newNodeSummary} (Source: {c.newNodeSource}, Date: {c.newNodeDate})\n"
-                    f"  Status: {c.status} ({c.relationship})"
-                )
+    if db_conflicts:
+        graph_ctx_lines.append("\n[Active Conflicts & Decisions:]")
+        for c in db_conflicts:
+            graph_ctx_lines.append(
+                f"- Topic: {c.topic}\n"
+                f"  Old Belief: {c.oldNodeSummary} (Source: {c.oldNodeSource}, Date: {c.oldNodeDate})\n"
+                f"  New Belief: {c.newNodeSummary} (Source: {c.newNodeSource}, Date: {c.newNodeDate})\n"
+                f"  Status: {c.status} ({c.relationship})"
+            )
 
     # Enrich with Cognee recall results from the actual graph
     if COGNEE_READY:
@@ -1029,7 +1008,7 @@ async def answer_query(req: RecallRequest) -> ChatMessage:
     timeline_list: Optional[list[TimelinePoint]] = None
 
     if intent == "what_changed":
-        matched_topic = get_matched_topic(query)
+        matched_topic = get_matched_topic(query, db_get_distinct_topics())
         if matched_topic:
             db_recon_log = db_get_reconciliation_log(matched_topic)
         else:
@@ -1047,7 +1026,7 @@ async def answer_query(req: RecallRequest) -> ChatMessage:
                 added=added, removed=removed, changed=changed, newDecisions=decisions,
             )
     elif intent == "temporal_belief":
-        matched_topic = get_matched_topic(query)
+        matched_topic = get_matched_topic(query, db_get_timeline_topics())
         if matched_topic:
             db_history = db_get_confidence_history(matched_topic)
             if db_history:

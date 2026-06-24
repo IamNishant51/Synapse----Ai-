@@ -6,92 +6,319 @@ import Image from "next/image";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Lenis from "lenis";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
+
+const SparkleIcon = ({ className = "w-4 h-4 text-[#777169]/40" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z" />
+  </svg>
+);
+
+const SectionLabel = ({ text, color = "bg-[#f4c5a8]" }: { text: string; color?: string }) => (
+  <div className="flex items-center gap-2 mb-6 justify-start">
+    <span className={`w-1.5 h-1.5 rounded-full ${color}`} />
+    <span className="caption-uppercase tracking-[0.08em] text-xs font-semibold text-[#777169]">{text}</span>
+  </div>
+);
 
 export default function LandingPage() {
   const router = useRouter();
   const [entering, setEntering] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const lenisRef = useRef<Lenis | null>(null);
 
-  useEffect(() => { ScrollTrigger.refresh(); }, []);
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault();
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(targetId, {
+        duration: 1.5,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // easeOutExpo
+      });
+    } else {
+      const target = document.querySelector(targetId);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+    setIsMobileMenuOpen(false);
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener("scroll", handleScroll);
+
+    // Save original classes to restore them when unmounting
+    const htmlHasHFull = document.documentElement.classList.contains("h-full");
+    const bodyHasHFull = document.body.classList.contains("h-full");
+
+    // Adjust classes for landing page scrolling
+    document.documentElement.classList.remove("h-full");
+    document.documentElement.classList.add("min-h-screen");
+    document.body.classList.remove("h-full");
+    document.body.classList.add("min-h-screen");
+
+    // Initialize Lenis Smooth Scrolling
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // easeOutExpo
+      smoothWheel: true,
+    });
+    lenisRef.current = lenis;
+
+    // Synchronize Lenis with GSAP ScrollTrigger
+    lenis.on("scroll", ScrollTrigger.update);
+    
+    const tickerUpdate = (time: number) => {
+      lenis.raf(time * 1000);
+    };
+    
+    gsap.ticker.add(tickerUpdate);
+    gsap.ticker.lagSmoothing(0);
+
+    // Refresh ScrollTrigger after DOM load/hydration layout shifts
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 100);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      // Restore original classes for other pages (like dashboard/graph)
+      if (htmlHasHFull) {
+        document.documentElement.classList.add("h-full");
+        document.documentElement.classList.remove("min-h-screen");
+      }
+      if (bodyHasHFull) {
+        document.body.classList.add("h-full");
+        document.body.classList.remove("min-h-screen");
+      }
+      
+      clearTimeout(timer);
+      gsap.ticker.remove(tickerUpdate);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
 
   useGSAP(() => {
     const mm = gsap.matchMedia();
 
     mm.add("(prefers-reduced-motion: no-preference)", () => {
       /* ── Hero entrance ── */
-      gsap.set(".fade-up", { y: 28, opacity: 0 });
+      gsap.set(".fade-up", { y: 24, opacity: 0 });
+      gsap.set(".scroll-cue", { y: 0, opacity: 0 });
 
       const intro = gsap.timeline({ defaults: { ease: "power3.out" } });
-      intro.to(".fade-up", { y: 0, opacity: 1, stagger: 0.14, duration: 0.9, delay: 0.2 });
+      intro
+        .to(".fade-up", { y: 0, opacity: 1, stagger: 0.1, duration: 0.9, delay: 0.1 })
+        .to(".scroll-cue", { opacity: 0.6, duration: 0.5 }, "-=0.3");
 
-      // Atmospheric orb drift
-      gsap.to(".atm-orb", {
-        keyframes: [
-          { x: "3%", y: "-2%", scale: 1.02, duration: 6 },
-          { x: "-2%", y: "3%", scale: 0.98, duration: 7 },
-          { x: "0%", y: "0%", scale: 1, duration: 5 },
-        ],
+      // Slow looping background orb drift
+      gsap.to(".hero-orb-1", {
+        y: "30px",
+        x: "15px",
+        duration: 12,
+        yoyo: true,
         repeat: -1,
-        ease: "sine.inOut",
+        ease: "sine.inOut"
+      });
+      gsap.to(".hero-orb-2", {
+        y: "-20px",
+        x: "-30px",
+        duration: 10,
+        yoyo: true,
+        repeat: -1,
+        ease: "sine.inOut"
+      });
+      gsap.to(".hero-orb-3", {
+        y: "25px",
+        x: "-10px",
+        duration: 14,
+        yoyo: true,
+        repeat: -1,
+        ease: "sine.inOut"
       });
 
-      // Scroll cue
-      gsap.to(".scroll-hint", { y: 5, repeat: -1, yoyo: true, duration: 1.4, ease: "sine.inOut" });
-
-      /* ── Section 2: source pills ── */
-      gsap.from(".src-item", {
+      // Hide scroll cue on scroll
+      gsap.to(".scroll-cue", {
         opacity: 0,
-        y: 24,
-        stagger: 0.08,
-        scrollTrigger: { trigger: "#section-sources", start: "top 80%", end: "top 50%", scrub: 1 },
+        y: -10,
+        scrollTrigger: {
+          trigger: "#hero",
+          start: "top top",
+          end: "60px top",
+          scrub: true
+        }
       });
 
-      /* ── Section 3: Ingest stepper (pinned) ── */
-      const steps = [".step-1", ".step-2", ".step-3", ".step-4"];
+      /* ── Section 3: Scattered Source Cards ── */
+      gsap.from(".source-card", {
+        opacity: 0,
+        scale: 0.8,
+        x: (i) => [60, -60, 40, -40, 50, -50, 20][i % 7],
+        y: (i) => [40, 60, -30, 50, -40, 30, -20][i % 7],
+        stagger: 0.05,
+        scrollTrigger: {
+          trigger: "#section-problem",
+          start: "top 80%",
+          end: "bottom 70%",
+          scrub: 1
+        }
+      });
+
+      /* ── Section 4: Ingestion Stepper & Spiral (Pinned) ── */
       const ingestTl = gsap.timeline({
-        scrollTrigger: { trigger: "#section-ingest", start: "center center", end: "+=160%", pin: true, scrub: 1 },
-      });
-      steps.forEach((sel, i) => {
-        const pct = `${(i + 1) * 25}%`;
-        ingestTl
-          .to(".prog-fill", { width: pct, ease: "none" })
-          .to(`${sel} .dot`, { backgroundColor: "#292524", borderColor: "#292524", color: "#fff" }, "<")
-          .to(`${sel} .lbl`, { color: "#292524" }, "<");
+        scrollTrigger: {
+          trigger: "#section-ingest",
+          pin: true,
+          start: "top top",
+          end: "+=1800",
+          scrub: 0.5,
+          anticipatePin: 1
+        }
       });
 
-      /* ── Section 4: Conflict (pinned) ── */
-      const conflictTl = gsap.timeline({
-        scrollTrigger: { trigger: "#section-conflict", start: "center center", end: "+=220%", pin: true, scrub: 1 },
-      });
-      conflictTl
-        .from(".belief-old", { opacity: 0, x: -30, duration: 1 })
-        .from(".belief-new", { opacity: 0, x: 30, duration: 1 }, "-=0.5")
-        .from(".conflict-badge", { scale: 0, duration: 0.3 }, "-=0.4")
-        .to(".btn-resolve", { boxShadow: "0 0 0 3px rgba(41,37,36,0.15)", scale: 1.04, duration: 0.35 })
-        .to(".btn-resolve", { boxShadow: "none", scale: 1, duration: 0.2 })
-        .from(".diff-result", { opacity: 0, y: 16, duration: 0.7 });
+      // Scrub the spiral path drawing
+      ingestTl.fromTo("#spiral-path", 
+        { strokeDashoffset: 2000 }, 
+        { strokeDashoffset: 0, duration: 2, ease: "none" }
+      );
 
-      /* ── Section 5: Decay ── */
+      // Scrub stepper dots lighting up along path progress
+      const stepTimes = [0.2, 0.7, 1.3, 1.8];
+      const steps = [1, 2, 3, 4];
+      steps.forEach((step, idx) => {
+        const time = stepTimes[idx];
+        ingestTl.to(`.pipeline-step-${step}`, {
+          borderColor: "#292524",
+          backgroundColor: "#292524",
+          color: "#ffffff",
+          duration: 0.2
+        }, time)
+        .to(`.pipeline-label-${step}`, {
+          color: "#0c0a09",
+          fontWeight: 600,
+          opacity: 1,
+          duration: 0.2
+        }, time)
+        .to(`.pipeline-desc-${step}`, {
+          opacity: 1,
+          duration: 0.2
+        }, time);
+      });
+
+      /* ── Section 5: What Changed - Meniscus Fusing & Diff UI (Pinned) ── */
+      const resolveTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: "#section-resolve",
+          pin: true,
+          start: "top top",
+          end: "+=2200",
+          scrub: 0.5,
+          anticipatePin: 1
+        }
+      });
+
+      // 1. Gold droplet fades in
+      resolveTl.fromTo("#droplet-gold", { opacity: 0, scale: 0.6 }, { opacity: 0.8, scale: 1, duration: 0.5 });
+      resolveTl.fromTo("#droplet-gold-label", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 }, "-=0.2");
+
+      // 2. Smoke droplet slides in and fuses
+      resolveTl.fromTo("#droplet-smoke", 
+        { opacity: 0, scale: 0.6, x: 100 }, 
+        { opacity: 0.8, scale: 1, x: 0, duration: 0.7, ease: "power2.out" }
+      );
+      resolveTl.fromTo("#droplet-smoke-label", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 }, "-=0.3");
+
+      // 3. Meniscus flash pulse at overlap
+      resolveTl.fromTo("#droplet-flash", { opacity: 0 }, { opacity: 1, duration: 0.15 })
+               .to("#droplet-flash", { opacity: 0, duration: 0.25 });
+      resolveTl.fromTo("#conflict-badge", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.2 }, "-=0.3");
+
+      // 4. Compare UI card fades in on left
+      resolveTl.fromTo("#compare-ui-card", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 });
+      
+      // Pulse Keep New button
+      resolveTl.to("#btn-keep-new", { scale: 1.05, boxShadow: "0 0 12px rgba(41,37,36,0.15)", duration: 0.2 })
+               .to("#btn-keep-new", { scale: 1, boxShadow: "none", duration: 0.2 });
+
+      // 5. Diff details reveal
+      resolveTl.fromTo("#diff-card", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 });
+
+      /* ── Section 6: Memory Decay ── */
       const decayTl = gsap.timeline({
-        scrollTrigger: { trigger: "#section-decay", start: "top 65%", end: "bottom 35%", scrub: 1 },
+        scrollTrigger: {
+          trigger: "#section-decay",
+          start: "top 75%",
+          end: "bottom 75%",
+          scrub: 1
+        }
       });
-      decayTl
-        .to(".bar-fading", { width: "6%", duration: 2 })
-        .to(".bar-active", { width: "94%", duration: 2 }, "<");
 
-      /* ── Feature cards stagger ── */
-      gsap.from(".feat-card", {
-        opacity: 0,
+      // Animate confidence scores and bars
+      decayTl.to("#decay-bar-postgres", { width: "12%", duration: 1.2 })
+             .to("#decay-score-postgres", { 
+               innerText: "0.12", 
+               snap: { innerText: 1 }, 
+               duration: 1.2 
+             }, 0)
+             .to("#decay-bar-supabase", { width: "95%", duration: 1.2 }, 0)
+             .to("#decay-score-supabase", { 
+               innerText: "0.95", 
+               snap: { innerText: 1 }, 
+               duration: 1.2 
+             }, 0);
+
+      /* ── Section 7: Graph Preview Parallax ── */
+      gsap.from(".graph-node-group-1", {
+        y: -40,
+        scrollTrigger: {
+          trigger: "#section-graph-preview",
+          start: "top bottom",
+          end: "bottom top",
+          scrub: 1.5
+        }
+      });
+      gsap.from(".graph-node-group-2", {
         y: 30,
-        stagger: 0.1,
-        scrollTrigger: { trigger: "#section-features", start: "top 75%", end: "top 45%", scrub: 1 },
+        scrollTrigger: {
+          trigger: "#section-graph-preview",
+          start: "top bottom",
+          end: "bottom top",
+          scrub: 1
+        }
+      });
+      gsap.from(".graph-node-group-3", {
+        y: -15,
+        scrollTrigger: {
+          trigger: "#section-graph-preview",
+          start: "top bottom",
+          end: "bottom top",
+          scrub: 2
+        }
       });
     });
 
     mm.add("(prefers-reduced-motion: reduce)", () => {
-      gsap.set(".fade-up, .src-item, .belief-old, .belief-new, .diff-result, .feat-card", { opacity: 1, y: 0 });
+      // Accessibility fallback: simple fades, no scroll locking/scrubbing
+      gsap.set(".fade-up", { opacity: 1, y: 0 });
+      gsap.set(".source-card", { opacity: 1, scale: 1, x: 0, y: 0 });
+      gsap.set("#spiral-path", { strokeDashoffset: 0 });
+      gsap.set(".pipeline-step-1, .pipeline-step-2, .pipeline-step-3, .pipeline-step-4", {
+        borderColor: "#292524",
+        backgroundColor: "#292524",
+        color: "#ffffff"
+      });
+      gsap.set(".pipeline-label-1, .pipeline-label-2, .pipeline-label-3, .pipeline-label-4", { opacity: 1 });
+      gsap.set(".pipeline-desc-1, .pipeline-desc-2, .pipeline-desc-3, .pipeline-desc-4", { opacity: 1 });
+      gsap.set("#droplet-gold, #droplet-smoke, #compare-ui-card, #diff-card", { opacity: 0.9, scale: 1, x: 0 });
+      gsap.set("#decay-bar-postgres", { width: "12%" });
+      gsap.set("#decay-bar-supabase", { width: "95%" });
     });
   }, { scope: wrapRef });
 
@@ -100,347 +327,720 @@ export default function LandingPage() {
     setTimeout(() => router.push("/graph"), 500);
   };
 
+
+
   return (
-    <div ref={wrapRef} className="bg-canvas text-ink selection:bg-gradient-lavender/40 relative">
-
-      {/* ═══════ ATMOSPHERIC ORBS ═══════ */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="atm-orb absolute top-[-10%] right-[-5%] w-[500px] h-[500px] orb-mint opacity-40 blur-[80px]" />
-        <div className="atm-orb absolute top-[40%] left-[-10%] w-[400px] h-[400px] orb-peach opacity-30 blur-[90px]" />
-        <div className="atm-orb absolute bottom-[-5%] right-[20%] w-[350px] h-[350px] orb-lavender opacity-35 blur-[70px]" />
-      </div>
-
-      {/* ═══════ TOP NAVIGATION ═══════ */}
-      <nav className="sticky top-0 z-50 bg-canvas/80 backdrop-blur-md border-b border-hairline">
-        <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="fade-up">
+    <div ref={wrapRef} className="bg-[#f5f5f5] text-[#0c0a09] relative min-h-screen selection:bg-[#a8c8e8]/40 overflow-x-clip font-sans">
+      
+      {/* ═══════ TOP FLOATING NAVIGATION ═══════ */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 h-16 transition-all duration-300 ${
+        scrolled ? "bg-[#f5f5f5]/90 backdrop-blur-md border-b border-[#e7e5e4] shadow-[0_4px_16px_rgba(0,0,0,0.02)]" : "bg-transparent border-b border-transparent"
+      }`}>
+        <div className="max-w-[1200px] mx-auto px-6 h-full flex items-center justify-between">
+          <a href="#hero" onClick={(e) => handleNavClick(e, "#hero")} className="flex items-center gap-2 cursor-pointer" aria-label="Scroll to top">
             <Image
-              src="/synapse-logo.png"
-              alt="Synapse"
-              width={110}
-              height={32}
+              src="/images/synapse-logo.png"
+              alt="Synapse Logo"
+              width={100}
+              height={28}
               priority
               className="object-contain"
             />
-          </div>
+          </a>
 
-          <div className="flex items-center gap-5 fade-up">
-            <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer"
-              className="text-[15px] font-medium text-body hover:text-ink transition-colors hidden sm:block">GitHub</a>
+          {/* Desktop Nav Links */}
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#section-ingest" onClick={(e) => handleNavClick(e, "#section-ingest")} className="text-[15px] font-medium text-[#4e4e4e] hover:text-[#0c0a09] transition-colors">How it works</a>
+            <a href="#section-resolve" onClick={(e) => handleNavClick(e, "#section-resolve")} className="text-[15px] font-medium text-[#4e4e4e] hover:text-[#0c0a09] transition-colors">Reconciliation</a>
+            <a href="#section-decay" onClick={(e) => handleNavClick(e, "#section-decay")} className="text-[15px] font-medium text-[#4e4e4e] hover:text-[#0c0a09] transition-colors">Memory Health</a>
+            <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer" className="text-[15px] font-medium text-[#4e4e4e] hover:text-[#0c0a09] transition-colors">GitHub</a>
             <button onClick={enter}
-              className="px-5 py-2 rounded-full bg-primary text-on-primary text-[15px] font-medium hover:bg-primary-active transition-colors cursor-pointer">
-              Try free
+              className="px-5 py-2.5 rounded-full bg-[#292524] text-white text-[15px] font-medium hover:bg-[#0c0a09] transition-all duration-300 cursor-pointer">
+              Open App
             </button>
           </div>
+
+          {/* Mobile Menu Hamburger */}
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden flex items-center text-[#292524] focus:outline-none">
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+              {isMobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
         </div>
+
+        {/* Mobile Menu Panel */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden bg-[#f5f5f5] border-b border-[#e7e5e4] px-6 py-6 space-y-4 flex flex-col items-start animate-fade-in">
+            <a href="#section-ingest" onClick={(e) => handleNavClick(e, "#section-ingest")} className="text-[15px] font-medium text-[#4e4e4e] w-full py-1">How it works</a>
+            <a href="#section-resolve" onClick={(e) => handleNavClick(e, "#section-resolve")} className="text-[15px] font-medium text-[#4e4e4e] w-full py-1">Reconciliation</a>
+            <a href="#section-decay" onClick={(e) => handleNavClick(e, "#section-decay")} className="text-[15px] font-medium text-[#4e4e4e] w-full py-1">Memory Health</a>
+            <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer" onClick={() => setIsMobileMenuOpen(false)} className="text-[15px] font-medium text-[#4e4e4e] w-full py-1">GitHub</a>
+            <button onClick={enter}
+              className="w-full text-center px-5 py-2.5 rounded-full bg-[#292524] text-white text-[15px] font-medium hover:bg-[#0c0a09] transition-all duration-300">
+              Open App
+            </button>
+          </div>
+        )}
       </nav>
 
-      {/* ═══════ 1 · HERO ═══════ */}
-      <section className="relative z-10 max-w-[1200px] mx-auto px-6 pt-20 md:pt-32 pb-24 min-h-[85vh] flex flex-col items-center justify-center text-center">
-        <div className="fade-up caption-upper text-muted mb-6">Memory infrastructure for developers</div>
-
-        <h1 className="fade-up display-mega text-ink max-w-3xl mb-6">
-          A knowledge graph that reconciles, decays, and actually keeps up with you.
-        </h1>
-
-        <p className="fade-up text-body text-base leading-relaxed max-w-lg mb-10" style={{ letterSpacing: "0.16px" }}>
-          Ingest scattered notes from ChatGPT, GitHub, PDFs, and more. Synapse detects when facts contradict each other and lets old beliefs fade away.
-        </p>
-
-        <div className="fade-up flex items-center gap-3">
-          <button onClick={enter} disabled={entering}
-            className="px-6 py-2.5 rounded-full bg-primary text-on-primary text-[15px] font-medium hover:bg-primary-active transition-all cursor-pointer disabled:opacity-50">
-            {entering ? "Opening…" : "Initialize graph"}
-          </button>
-          <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer"
-            className="px-6 py-2.5 rounded-full border border-hairline-strong text-[15px] font-medium text-ink hover:bg-surface-strong transition-all cursor-pointer">
-            View source
-          </a>
+      {/* ═══════ 2 · HERO (Soft overlap blurred background) ═══════ */}
+      <section id="hero" className="relative z-10 max-w-[1200px] mx-auto px-6 pt-36 pb-24 min-h-[85vh] grid grid-cols-1 md:grid-cols-12 gap-16 items-center">
+        
+        {/* Soft radial-gradient background blooms */}
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.12]">
+          <div className="hero-orb-1 absolute top-[-10%] left-[20%] w-[550px] h-[550px] rounded-full filter blur-[100px] bg-gradient-to-r from-[#a7e5d3] to-[#c8b8e0]" />
+          <div className="hero-orb-2 absolute top-[20%] right-[10%] w-[500px] h-[500px] rounded-full filter blur-[110px] bg-gradient-to-r from-[#f4c5a8] to-[#e8b8c4]" />
+          <div className="hero-orb-3 absolute bottom-[10%] left-[5%] w-[450px] h-[450px] rounded-full filter blur-[90px] bg-gradient-to-r from-[#a8c8e8] to-[#c8b8e0]" />
         </div>
 
-        <div className="scroll-hint absolute bottom-8 left-1/2 -translate-x-1/2 opacity-40 flex flex-col items-center gap-1.5">
-          <span className="text-[11px] uppercase tracking-[0.15em] text-muted font-medium">Scroll</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#777169" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
-        </div>
-      </section>
+        <div className="flex flex-col items-start text-left md:col-span-7 relative z-10">
+          <h1 className="fade-up display-mega text-[#0c0a09] mb-8 leading-[1.05] tracking-[-1.92px]" style={{ fontWeight: 300 }}>
+            Memory that knows when it&apos;s wrong.
+          </h1>
 
-      {/* ═══════ 2 · THE PROBLEM ═══════ */}
-      <section id="section-sources" className="relative z-10 py-24 px-6" style={{ paddingTop: "96px", paddingBottom: "96px" }}>
-        <div className="max-w-[1200px] mx-auto text-center">
-          <div className="caption-upper text-muted mb-4">The problem</div>
-          <h2 className="display-lg text-ink mb-4">Your context lives everywhere.</h2>
-          <p className="text-body max-w-md mx-auto mb-14" style={{ letterSpacing: "0.16px" }}>
-            Decisions in ChatGPT. Code on GitHub. Research in PDFs. None of them stay in sync.
+          <p className="fade-up text-[#4e4e4e] text-base leading-relaxed max-w-xl mb-10 tracking-[0.16px]">
+            Ingest scattered notes from ChatGPT, GitHub, PDFs, and more. Synapse actively reconciles conflicting facts, prunes unreinforced paths, and structures your personal knowledge graph.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {[
-              { name: "ChatGPT", d: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1h2c0 .55-.45 1-1 1zm3-3H9v-1l1-1v-2.5c0-1.6.97-2.97 2.5-3.32V5.5c0-.28.22-.5.5-.5s.5.22.5.5v.68c1.53.35 2.5 1.72 2.5 3.32V12l1 1v1z" },
-              { name: "GitHub", d: "M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z" },
-              { name: "PDFs", d: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4zM8 17h8v-2H8v2zm0-4h8v-2H8v2z" },
-              { name: "YouTube", d: "M21.8 8.001a2.75 2.75 0 00-1.94-1.93C18.12 5.5 12 5.5 12 5.5s-6.12 0-7.86.57a2.75 2.75 0 00-1.94 1.93A28.7 28.7 0 001.5 12a28.7 28.7 0 00.7 3.999 2.75 2.75 0 001.94 1.93c1.74.57 7.86.57 7.86.57s6.12 0 7.86-.57a2.75 2.75 0 001.94-1.93A28.7 28.7 0 0022.5 12a28.7 28.7 0 00-.7-3.999zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" },
-              { name: "Articles", d: "M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" },
-            ].map((src) => (
-              <div key={src.name} className="src-item flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-surface-card border border-hairline hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)] transition-shadow">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#777169"><path d={src.d}/></svg>
-                <span className="text-[15px] font-medium text-body-strong">{src.name}</span>
-              </div>
-            ))}
+          <div className="fade-up flex items-center gap-4">
+            <button onClick={enter} disabled={entering}
+              className="px-6 py-3 rounded-full bg-[#292524] text-white text-[15px] font-medium hover:bg-[#0c0a09] transition-all duration-300 cursor-pointer disabled:opacity-50">
+              {entering ? "Opening…" : "Open the App"}
+            </button>
+            <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer"
+              className="px-6 py-3 rounded-full border border-[#d6d3d1] text-[15px] font-medium text-[#0c0a09] hover:bg-[#f0efed] transition-all duration-300 cursor-pointer">
+              View on GitHub
+            </a>
           </div>
         </div>
-      </section>
 
-      {/* ═══════ 3 · INGEST (pinned) ═══════ */}
-      <section id="section-ingest" className="relative z-10 min-h-[70vh] flex items-center border-y border-hairline bg-canvas-soft">
-        <div className="max-w-[700px] mx-auto px-6 w-full py-24">
-          <div className="caption-upper text-muted mb-4">How it works</div>
-          <h2 className="display-lg text-ink mb-3">Feed it anything.</h2>
-          <p className="text-body mb-14 max-w-md" style={{ letterSpacing: "0.16px" }}>
-            Drop a repo, a PDF, or a conversation export. Synapse fetches, extracts,
-            calls <code className="text-body-strong text-sm">cognee.remember()</code>,
-            then reconciles via <code className="text-body-strong text-sm">improve()</code>.
-          </p>
-
-          {/* Stepper */}
-          <div className="relative flex items-start justify-between">
-            <div className="absolute top-4 left-[12.5%] right-[12.5%] h-[2px] bg-hairline z-0" />
-            <div className="prog-fill absolute top-4 left-[12.5%] h-[2px] w-0 bg-primary z-[1] transition-all" />
-
-            {["Fetch", "Extract", "remember()", "improve()"].map((label, i) => (
-              <div key={label} className={`step-${i + 1} flex-1 flex flex-col items-center gap-2.5 relative z-10`}>
-                <div className="dot w-9 h-9 rounded-full border-2 border-hairline bg-surface-card grid place-items-center text-xs font-mono text-muted transition-all duration-300">
-                  {i + 1}
-                </div>
-                <span className="lbl text-xs text-muted font-medium transition-colors duration-300">{label}</span>
-              </div>
-            ))}
+        {/* Editorial Layout Asymmetric Right Column */}
+        <div className="fade-up md:col-span-5 hidden md:flex flex-col items-end text-right border-l border-[#e7e5e4] pl-10 py-8 gap-8 relative z-10 self-center">
+          <SparkleIcon className="w-8 h-8 text-[#292524]/20 mr-2" />
+          <div className="space-y-2">
+            <div className="text-[11px] font-mono tracking-widest text-[#777169] uppercase">STRUCTURED METADATA</div>
+            <div className="font-serif text-2xl text-[#292524] italic leading-tight">reconcile()<br />forget()<br />remember()</div>
           </div>
+          <div className="text-xs text-[#777169] leading-relaxed max-w-[200px]">
+            Built as a real-time memory dashboard on top of Cognee&apos;s semantic engine.
+          </div>
+        </div>
+
+        {/* Animated Scroll Cue */}
+        <div className="scroll-cue absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-default select-none pointer-events-none opacity-60">
+          <span className="caption-uppercase tracking-[0.15em] text-[10px] text-[#777169]">SCROLL STORY</span>
+          <svg className="w-4 h-4 animate-bounce text-[#777169]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
         </div>
       </section>
 
-      {/* ═══════ 4 · CONFLICT RESOLUTION (pinned) ═══════ */}
-      <section id="section-conflict" className="relative z-10 min-h-screen flex items-center py-24">
-        <div className="max-w-[700px] mx-auto px-6 w-full">
-          <div className="caption-upper text-muted mb-4" style={{ color: "#e0a328" }}>Core differentiator</div>
-          <h2 className="display-lg text-ink mb-3">Facts change. Synapse catches it.</h2>
-          <p className="text-body mb-12 max-w-md" style={{ letterSpacing: "0.16px" }}>
-            When new evidence contradicts an older belief, Synapse surfaces the conflict and asks you to decide.
-          </p>
+      {/* ═══════ 3 · THE PROBLEM (Scattered Cards, white BG) ═══════ */}
+      <section id="section-problem" className="relative z-10 py-24 md:py-32 px-6 bg-[#f5f5f5] border-t border-[#e7e5e4]">
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-16 items-center">
+          <div className="text-left md:col-span-5">
+            <SectionLabel text="THE PROBLEM" color="bg-[#a7e5d3]" />
+            <h2 className="display-lg text-[#0c0a09] mb-8 leading-[1.1]" style={{ fontWeight: 300 }}>
+              Your knowledge lives in twelve different places.
+            </h2>
+            <p className="text-[#4e4e4e] text-base leading-relaxed max-w-lg mb-8 tracking-[0.16px]">
+              Decisions are made in ChatGPT. Framework specs are on GitHub. Research is stored in PDFs. Plain vector stores treat them as isolated strings. Synapse brings them together, structuring relationships dynamically.
+            </p>
+          </div>
 
-          {/* Conflict card */}
-          <div className="rounded-2xl border border-hairline bg-surface-card overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
-            {/* Accent bar */}
-            <div className="h-[3px]" style={{ background: "linear-gradient(90deg, #e0a328 0%, #f4c5a8 100%)" }} />
-            <div className="p-6 md:p-8">
-              {/* Badge */}
-              <div className="flex items-center gap-2 mb-6">
-                <div className="conflict-badge w-5 h-5 rounded-full grid place-items-center" style={{ background: "rgba(224,163,40,0.12)" }}>
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="6.5" stroke="#e0a328" strokeWidth="1.5"/>
-                    <path d="M8 5v3.5M8 10.5v.01" stroke="#e0a328" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <span className="text-sm font-medium text-ink">Conflict — Database choice</span>
-              </div>
+          {/* Scattered Source-Cards Mockup Frame */}
+          <div className="md:col-span-7 relative h-[420px] w-full flex items-center justify-center bg-white/30 rounded-3xl border border-[#e7e5e4]/50 overflow-hidden select-none shadow-[inset_0_2px_8px_rgba(0,0,0,0.01)]">
+            <div className="absolute inset-0 bg-[radial-gradient(#8080800a_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+            
+            {/* Card 1: ChatGPT */}
+            <div className="source-card bg-white border border-[#e7e5e4] rounded-full px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center gap-3 absolute top-[10%] left-[8%] rotate-[-4deg] hover:border-[#d6d3d1] transition-colors duration-150">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#292524]">
+                <path d="M12 2v20M17 5H7M19 12H5M17 19H7M21 9l-18 6M3 9l18 6" />
+                <circle cx="12" cy="12" r="3" className="fill-[#f5f5f5]" />
+              </svg>
+              <span className="text-xs font-semibold text-[#292524] tracking-[0.16px]">ChatGPT Export</span>
+            </div>
 
-              {/* Old vs New */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                <div className="belief-old p-4 rounded-xl bg-canvas border border-hairline">
-                  <span className="caption-upper text-muted-soft block mb-2">Old belief</span>
-                  <p className="text-sm text-body leading-snug">&quot;Using Postgres for the main datastore&quot;</p>
-                  <span className="mt-2 inline-block text-[11px] text-muted-soft">Mar 2 — ChatGPT session</span>
-                </div>
-                <div className="belief-new p-4 rounded-xl bg-canvas border border-hairline" style={{ borderColor: "rgba(41,37,36,0.2)" }}>
-                  <span className="caption-upper text-body-strong block mb-2">New evidence</span>
-                  <p className="text-sm text-body leading-snug">&quot;Switched everything to Supabase&quot;</p>
-                  <span className="mt-2 inline-block text-[11px] text-muted-soft">Jun 20 — project-notes.md</span>
-                </div>
-              </div>
+            {/* Card 2: GitHub */}
+            <div className="source-card bg-white border border-[#e7e5e4] rounded-full px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center gap-3 absolute top-[48%] left-[4%] rotate-[3deg] hover:border-[#d6d3d1] transition-colors duration-150">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#292524]">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+              </svg>
+              <span className="text-xs font-semibold text-[#292524] tracking-[0.16px]">GitHub Commit</span>
+            </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-center gap-2.5">
-                <button className="px-4 py-2 rounded-full border border-hairline-strong text-sm text-body hover:bg-surface-strong transition-colors">Keep Old</button>
-                <button className="btn-resolve px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium">Keep New</button>
-                <button className="px-4 py-2 rounded-full border border-hairline-strong text-sm text-body hover:bg-surface-strong transition-colors">Keep Both</button>
-              </div>
+            {/* Card 3: Notion */}
+            <div className="source-card bg-white border border-[#e7e5e4] rounded-full px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center gap-3 absolute top-[78%] left-[12%] rotate-[-5deg] hover:border-[#d6d3d1] transition-colors duration-150">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#292524]">
+                <path d="M12 2L2 7l10 5 10-5-10-5Z" />
+                <path d="M2 17l10 5 10-5" />
+              </svg>
+              <span className="text-xs font-semibold text-[#292524] tracking-[0.16px]">Notion Notes</span>
+            </div>
 
-              {/* Diff result */}
-              <div className="diff-result mt-6 pt-6 border-t border-hairline">
-                <span className="caption-upper block mb-2" style={{ color: "#16a34a" }}>Decision recorded</span>
-                <div className="rounded-xl bg-canvas border border-hairline p-4 font-mono text-sm leading-relaxed">
-                  <span style={{ color: "#dc2626" }}>− Postgres</span><br />
-                  <span style={{ color: "#16a34a" }}>+ Supabase</span>
-                </div>
-              </div>
+            {/* Card 4: Claude */}
+            <div className="source-card bg-white border border-[#e7e5e4] rounded-full px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center gap-3 absolute top-[22%] right-[10%] rotate-[6deg] hover:border-[#d6d3d1] transition-colors duration-150">
+              <SparkleIcon className="w-[18px] h-[18px] text-[#292524]" />
+              <span className="text-xs font-semibold text-[#292524] tracking-[0.16px]">Claude Session</span>
+            </div>
+
+            {/* Card 5: PDFs */}
+            <div className="source-card bg-white border border-[#e7e5e4] rounded-full px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center gap-3 absolute top-[52%] right-[22%] rotate-[-2deg] hover:border-[#d6d3d1] transition-colors duration-150">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#292524]">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <span className="text-xs font-semibold text-[#292524] tracking-[0.16px]">specs.pdf</span>
+            </div>
+
+            {/* Card 6: Articles */}
+            <div className="source-card bg-white border border-[#e7e5e4] rounded-full px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center gap-3 absolute top-[76%] right-[8%] rotate-[3deg] hover:border-[#d6d3d1] transition-colors duration-150">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#292524]">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                <path d="M16 8h2M16 12h2" />
+              </svg>
+              <span className="text-xs font-semibold text-[#292524] tracking-[0.16px]">Web Article</span>
+            </div>
+
+            {/* Card 7: YouTube */}
+            <div className="source-card bg-white border border-[#e7e5e4] rounded-full px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)] flex items-center gap-3 absolute top-[36%] left-[40%] rotate-[-1deg] hover:border-[#d6d3d1] transition-colors duration-150">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#292524]">
+                <rect x="2" y="3" width="20" height="18" rx="5" ry="5" />
+                <polygon points="10 8 16 12 10 16 10 8" />
+              </svg>
+              <span className="text-xs font-semibold text-[#292524] tracking-[0.16px]">YouTube Audio</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ═══════ 5 · DECAY ═══════ */}
-      <section id="section-decay" className="relative z-10 py-24 px-6 border-t border-hairline" style={{ paddingTop: "96px", paddingBottom: "96px" }}>
-        <div className="max-w-[700px] mx-auto">
-          <div className="caption-upper text-muted mb-4">Memory health</div>
-          <h2 className="display-lg text-ink mb-3">Unreinforced beliefs fade.</h2>
-          <p className="text-body mb-14 max-w-md" style={{ letterSpacing: "0.16px" }}>
-            Confidence decays over time. When a belief goes unreinforced, <code className="text-body-strong text-sm">cognee.forget()</code> prunes it from the graph.
-          </p>
-
-          <div className="space-y-6 max-w-lg">
+      {/* ═══════ 4 · INGESTION AND STAGES PIPELINE (Pinned, Ingestion Spiral) ═══════ */}
+      <section id="section-ingest" className="relative z-10 w-full min-h-screen bg-[#f5f5f5] flex items-center border-t border-[#e7e5e4]">
+        <div className="max-w-[1200px] mx-auto px-6 w-full py-24 grid grid-cols-1 md:grid-cols-12 gap-16 items-center">
+          
+          {/* Stepper info list */}
+          <div className="text-left md:col-span-6 flex flex-col gap-6">
             <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-muted">Postgres · 3 months ago</span>
-                <span className="font-mono text-sm" style={{ color: "#dc2626" }}>0.12</span>
+              <SectionLabel text="THE PIPELINE" color="bg-[#c8b8e0]" />
+              <h2 className="display-lg text-[#0c0a09] mb-8 leading-[1.08]" style={{ fontWeight: 300 }}>
+                Feed it anything. Structure is automatic.
+              </h2>
+            </div>
+
+            {/* Vertical pipeline progress UI */}
+            <div className="relative flex flex-col gap-8 pl-8 border-l border-[#e7e5e4]">
+              {[
+                { step: 1, title: "Fetch", desc: "Ingests Raw context: PDFs, repository code, exports, or YouTube transcripts." },
+                { step: 2, title: "Extract", desc: "AI parsing identifies central semantic nodes, parameters, and entities." },
+                { step: 3, title: "remember()", desc: "Cognee maps relations, writing vectors and links directly into the database." },
+                { step: 4, title: "improve()", desc: "Synapse contradiction sweeps detect factual conflicts for human judgment." }
+              ].map((s) => (
+                <div key={s.title} className="relative flex flex-col items-start">
+                  <div className={`pipeline-step-${s.step} absolute left-[-45px] top-0 w-8 h-8 rounded-full border border-[#d6d3d1] bg-white grid place-items-center text-xs font-semibold font-mono text-[#777169] transition-all duration-300`}>
+                    {s.step}
+                  </div>
+                  <div>
+                    <h4 className={`pipeline-label-${s.step} text-base font-semibold text-[#777169] opacity-70 transition-all duration-300`}>{s.title}</h4>
+                    <p className={`pipeline-desc-${s.step} text-sm text-[#777169] mt-1.5 leading-relaxed opacity-60 transition-all duration-300`}>{s.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right column with coiling spiral SVG */}
+          <div className="md:col-span-6 flex justify-center items-center relative h-[380px] md:h-[480px]">
+            <svg viewBox="0 0 600 600" className="w-[90%] h-[90%] select-none">
+              <defs>
+                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="8" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <linearGradient id="spiral-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#a7e5d3" />
+                  <stop offset="50%" stopColor="#c8b8e0" />
+                  <stop offset="100%" stopColor="#f4c5a8" />
+                </linearGradient>
+              </defs>
+              
+              {/* Coiling spiral path */}
+              <path 
+                id="spiral-path"
+                d="M 50,550 Q 100,550 120,300 C 140,50 510,70 480,300 C 460,520 160,500 180,300 C 190,120 440,140 420,300 C 400,450 200,430 220,300 C 230,190 370,200 360,300 C 350,380 250,370 260,300 C 270,250 330,260 320,300 C 310,330 280,320 280,300 C 280,290 290,270 300,280 C 305,285 305,295 300,300"
+                fill="none" 
+                stroke="url(#spiral-grad)" 
+                strokeWidth="4" 
+                strokeLinecap="round" 
+                filter="url(#glow)"
+                strokeDasharray="2000"
+                strokeDashoffset="2000"
+              />
+
+              {/* Glowing core indicators */}
+              <circle cx="300" cy="300" r="10" fill="#292524" className="animate-pulse" />
+              <circle cx="300" cy="300" r="5" fill="#a7e5d3" />
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ 5 · WHAT CHANGED RECONCILIATION (Pinned droplets, conflict cards) ═══════ */}
+      <section id="section-resolve" className="relative z-10 w-full min-h-screen bg-[#f5f5f5] flex items-center border-t border-[#e7e5e4]">
+        <div className="max-w-[1200px] mx-auto px-6 w-full py-24 grid grid-cols-1 md:grid-cols-12 gap-16 items-center">
+          
+          {/* Left Column: text details and interactive Compare + Diff card mockups */}
+          <div className="text-left md:col-span-6 flex flex-col gap-8">
+            <div>
+              <SectionLabel text="RECONCILIATION" color="bg-[#f4c5a8]" />
+              <h2 className="display-lg text-[#0c0a09] mb-8 leading-[1.08]" style={{ fontWeight: 300 }}>
+                Conflicts resolved by design.
+              </h2>
+              <p className="text-[#4e4e4e] text-base leading-relaxed tracking-[0.16px]">
+                When new evidence contradicts an older belief, Synapse detects the contradiction at the schema layer and surfaces it immediately. You retain ultimate control over what enters your long-term memory graph.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              {/* Compare UI Card Mockup */}
+              <div id="compare-ui-card" className="bg-white border border-[#e7e5e4] p-6 rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.02)] flex flex-col opacity-0">
+                <div className="flex items-center justify-between border-b border-[#e7e5e4] pb-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#e0a328]" />
+                    <span className="text-xs font-semibold text-[#0c0a09] tracking-wider uppercase">Resolve Contradiction</span>
+                  </div>
+                  <span className="text-[10px] text-[#777169] font-mono">Topic: Canvas Theme</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-canvas-soft border border-[#e7e5e4] p-4 rounded-xl text-left">
+                    <span className="text-[9px] uppercase tracking-wider text-[#777169] font-semibold block mb-1">Old belief</span>
+                    <p className="text-xs text-[#292524] font-medium leading-relaxed">&quot;Keep canvas as the only background — dark.&quot;</p>
+                    <span className="text-[9px] text-[#a8a29e] block mt-3">cognee_hackathon.md</span>
+                  </div>
+                  <div className="bg-canvas-soft border border-[#e7e5e4] p-4 rounded-xl text-left">
+                    <span className="text-[9px] uppercase tracking-wider text-[#292524] font-semibold block mb-1">New evidence</span>
+                    <p className="text-xs text-[#292524] font-medium leading-relaxed">&quot;The base canvas is off-white (#f5f5f5) canvas.&quot;</p>
+                    <span className="text-[9px] text-[#a8a29e] block mt-3">DESIGN-elevenlabs.md</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 justify-end">
+                  <button className="px-4 py-2 border border-[#d6d3d1] text-xs font-medium rounded-full text-[#4e4e4e] bg-white hover:text-black transition-colors select-none">
+                    Keep Old
+                  </button>
+                  <button id="btn-keep-new" className="px-5 py-2 bg-[#292524] text-white text-xs font-medium rounded-full hover:bg-black transition-colors select-none">
+                    Keep New
+                  </button>
+                </div>
               </div>
-              <div className="h-2 bg-hairline-soft rounded-full overflow-hidden">
-                <div className="bar-fading h-full rounded-full w-[88%]" style={{ background: "#d6d3d1" }} />
+
+              {/* Diff Card Mockup */}
+              <div id="diff-card" className="bg-white border border-[#e7e5e4] p-5 rounded-xl text-left font-mono text-[10px] space-y-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] opacity-0">
+                <div className="flex justify-between border-b border-[#e7e5e4] pb-2 mb-2 font-sans">
+                  <span className="uppercase text-[8px] text-[#777169] font-bold">Diff Result — Canvas Theme</span>
+                  <span className="text-[8px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full font-semibold">Committed</span>
+                </div>
+                <div className="text-[#dc2626] font-medium">− Dark canvas (#010102)</div>
+                <div className="text-emerald-600 font-medium">+ Off-white (#f5f5f5) canvas</div>
+                <div className="text-emerald-600 font-medium">+ DESIGN-elevenlabs.md specs</div>
+                <div className="text-[#777169] font-sans text-[9px] pt-1">
+                  Reconciliation pass updated active nodes successfully.
+                </div>
               </div>
             </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-body-strong font-medium">Supabase · reinforced today</span>
-                <span className="font-mono text-sm text-ink">0.95</span>
-              </div>
-              <div className="h-2 bg-hairline-soft rounded-full overflow-hidden">
-                <div className="bar-active h-full bg-primary rounded-full w-[8%]" />
-              </div>
+          </div>
+
+          {/* Right Column: Fusing Golden and Smoke droplet visual */}
+          <div className="md:col-span-6 flex flex-col justify-center items-center relative h-[380px] md:h-[480px]">
+            {/* "⚠ Conflict detected" Badge */}
+            <div id="conflict-badge" className="absolute top-[10%] bg-[#fef08a] border border-[#eab308]/40 px-4 py-1.5 rounded-full shadow-[0_4px_12px_rgba(234,179,8,0.1)] flex items-center gap-2 z-20 opacity-0 select-none">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6.5" stroke="#ca8a04" strokeWidth="1.5"/>
+                <path d="M8 5v3.5M8 10.5v.01" stroke="#ca8a04" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span className="text-[10px] font-bold text-[#ca8a04] uppercase tracking-wider">Conflict Detected</span>
+            </div>
+
+            {/* Droplet SVG Canvas */}
+            <svg viewBox="0 0 500 400" className="w-full h-full max-w-[420px] select-none relative z-10">
+              <defs>
+                <radialGradient id="gold-droplet" cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stopColor="#fef08a" stopOpacity="0.8" />
+                  <stop offset="40%" stopColor="#eab308" stopOpacity="0.5" />
+                  <stop offset="95%" stopColor="#ca8a04" stopOpacity="0.1" />
+                  <stop offset="100%" stopColor="#ca8a04" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="smoke-droplet" cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stopColor="#78716c" stopOpacity="0.8" />
+                  <stop offset="40%" stopColor="#292524" stopOpacity="0.6" />
+                  <stop offset="95%" stopColor="#0c0a09" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#0c0a09" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="intersection-flash" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#fef08a" stopOpacity="1" />
+                  <stop offset="50%" stopColor="#eab308" stopOpacity="0.6" />
+                  <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+
+              {/* Gold Droplet */}
+              <circle id="droplet-gold" cx="180" cy="200" r="80" fill="url(#gold-droplet)" className="opacity-0" />
+
+              {/* Smoke Droplet */}
+              <circle id="droplet-smoke" cx="320" cy="200" r="80" fill="url(#smoke-droplet)" className="opacity-0" />
+
+              {/* Overlap Flash */}
+              <circle id="droplet-flash" cx="250" cy="200" r="50" fill="url(#intersection-flash)" className="opacity-0" />
+            </svg>
+
+            {/* Droplet Captions */}
+            <div className="absolute bottom-[10%] flex justify-between w-[80%] font-mono text-[10px] text-[#777169] select-none pointer-events-none">
+              <span id="droplet-gold-label" className="opacity-0">Old Belief (Gold)</span>
+              <span id="droplet-smoke-label" className="opacity-0">New Evidence (Smoke)</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ═══════ 6 · FEATURE GRID ═══════ */}
-      <section id="section-features" className="relative z-10 py-24 px-6 border-t border-hairline" style={{ paddingTop: "96px", paddingBottom: "96px" }}>
+      {/* ═══════ 6 · MEMORY HEALTH / DECAY (Eclipse and dissolving bubbles) ═══════ */}
+      <section id="section-decay" className="relative z-10 py-24 md:py-32 px-6 bg-[#f5f5f5] border-t border-[#e7e5e4]">
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-16 items-center">
+          
+          {/* Left Column: Copy + Confidence decay timeline progress */}
+          <div className="text-left md:col-span-6 flex flex-col gap-10">
+            <div>
+              <SectionLabel text="MEMORY HEALTH" color="bg-[#a8c8e8]" />
+              <h2 className="display-lg text-[#0c0a09] mb-8 leading-[1.08]" style={{ fontWeight: 300 }}>
+                Unreinforced beliefs fade.
+              </h2>
+              <p className="text-[#4e4e4e] text-base leading-relaxed tracking-[0.16px] max-w-lg">
+                Confidence degrades proportionally over time. When a belief goes unreinforced, Synapse prunes it from the graph via <code className="text-xs bg-[#f0efed] px-1 py-0.5 rounded font-mono font-bold">cognee.forget()</code>.
+              </p>
+            </div>
+
+            {/* Stacked Confidence Bars Mockup */}
+            <div className="space-y-8 max-w-md">
+              <div>
+                <div className="flex justify-between text-xs font-medium mb-3">
+                  <span className="text-[#777169]">Postgres Config · 3 months ago</span>
+                  <span className="font-mono font-semibold text-[#dc2626]" id="decay-score-postgres">0.92</span>
+                </div>
+                <div className="h-2 bg-[#e7e5e4] rounded-full overflow-hidden">
+                  <div id="decay-bar-postgres" className="h-full bg-[#d6d3d1] rounded-full w-[92%]" />
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex justify-between text-xs font-medium mb-3">
+                  <span className="text-[#0c0a09] font-semibold">Supabase Integration · reinforced today</span>
+                  <span className="font-mono font-semibold text-[#0c0a09]" id="decay-score-supabase">0.00</span>
+                </div>
+                <div className="h-2 bg-[#e7e5e4] rounded-full overflow-hidden">
+                  <div id="decay-bar-supabase" className="h-full bg-[#292524] rounded-full w-[0%]" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Memory Decay Illustration */}
+          <div className="md:col-span-6 flex justify-center items-center relative h-[380px] bg-white border border-[#e7e5e4] rounded-3xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.02)] select-none">
+            <Image
+              src="/images/memory-decay.png"
+              alt="Memory Decay Illustration"
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-contain p-6"
+              priority
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ 7 · METADATA GRAPH PREVIEW (Parallax SVG Graph) ═══════ */}
+      <section id="section-graph-preview" className="relative z-10 py-24 md:py-32 px-6 bg-[#f5f5f5] border-t border-[#e7e5e4]">
+        <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-16 items-center">
+          
+          <div className="text-left md:col-span-5 flex flex-col gap-6">
+            <SectionLabel text="METADATA GRAPH" color="bg-[#e8b8c4]" />
+            <h2 className="display-lg text-[#0c0a09] leading-[1.08]" style={{ fontWeight: 300 }}>
+              Every memory, mapped.
+            </h2>
+            <p className="text-[#4e4e4e] text-base leading-relaxed tracking-[0.16px]">
+              Synapse builds a weighted semantic relationship connection network. Node sizing dynamically adjusts (larger nodes have more connections). Open the app to explore the full interactive 3D graph.
+            </p>
+            <div className="pt-2 text-xs font-mono text-[#777169] select-none">
+              [ Glance Preview — Static Layer Mockup ]
+            </div>
+          </div>
+
+          {/* Non-interactive lightweight SVG graph mockup with parallax */}
+          <div className="md:col-span-7 flex justify-center items-center relative h-[380px] bg-white/20 border border-[#e7e5e4] rounded-3xl overflow-hidden shadow-[inset_0_2px_8px_rgba(0,0,0,0.01)] select-none">
+            <svg viewBox="0 0 600 400" className="w-full h-full max-w-[500px]">
+              <defs>
+                <linearGradient id="node-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="100%" stopColor="#f5f3f1" />
+                </linearGradient>
+              </defs>
+              
+              {/* Connection paths */}
+              <g stroke="#d6d3d1" strokeWidth="1" opacity="0.6">
+                <line x1="300" y1="200" x2="180" y2="100" />
+                <line x1="300" y1="200" x2="420" y2="120" />
+                <line x1="300" y1="200" x2="220" y2="300" />
+                <line x1="300" y1="200" x2="380" y2="280" />
+                <line x1="180" y1="100" x2="420" y2="120" />
+                <line x1="220" y1="300" x2="380" y2="280" />
+                <line x1="180" y1="100" x2="220" y2="300" />
+                <line x1="420" y1="120" x2="380" y2="280" />
+              </g>
+
+              {/* Parallax Group 1 (Central Node) */}
+              <g className="graph-node-group-1 cursor-default">
+                <circle cx="300" cy="200" r="32" fill="url(#node-grad)" stroke="#292524" strokeWidth="1.5" />
+                <text x="300" y="203" textAnchor="middle" fill="#0c0a09" fontSize="9" fontWeight="bold" fontFamily="sans-serif">Canvas Theme</text>
+              </g>
+
+              {/* Parallax Group 2 (Ingest & Security) */}
+              <g className="graph-node-group-2 cursor-default">
+                {/* Node Top Left */}
+                <circle cx="180" cy="100" r="26" fill="url(#node-grad)" stroke="#292524" strokeWidth="1" />
+                <text x="180" y="103" textAnchor="middle" fill="#0c0a09" fontSize="8" fontFamily="sans-serif">Security</text>
+
+                {/* Node Bottom Right */}
+                <circle cx="380" cy="280" r="24" fill="url(#node-grad)" stroke="#292524" strokeWidth="1" />
+                <text x="380" y="283" textAnchor="middle" fill="#0c0a09" fontSize="8" fontFamily="sans-serif">API Key</text>
+              </g>
+
+              {/* Parallax Group 3 (Others) */}
+              <g className="graph-node-group-3 cursor-default">
+                {/* Node Top Right */}
+                <circle cx="420" cy="120" r="22" fill="url(#node-grad)" stroke="#292524" strokeWidth="1" />
+                <text x="420" y="123" textAnchor="middle" fill="#0c0a09" fontSize="8" fontFamily="sans-serif">Typography</text>
+
+                {/* Node Bottom Left */}
+                <circle cx="220" cy="300" r="20" fill="url(#node-grad)" stroke="#292524" strokeWidth="1" />
+                <text x="220" y="303" textAnchor="middle" fill="#0c0a09" fontSize="8" fontFamily="sans-serif">Specs</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ 7.5 · CAPABILITIES (Bento Grid) ═══════ */}
+      <section id="section-capabilities" className="relative z-10 py-24 md:py-32 px-6 bg-[#f5f5f5] border-t border-[#e7e5e4]">
         <div className="max-w-[1200px] mx-auto">
           <div className="text-center mb-16">
-            <div className="caption-upper text-muted mb-4">Capabilities</div>
-            <h2 className="display-lg text-ink">Built on Cognee&apos;s memory lifecycle.</h2>
+            <SectionLabel text="CAPABILITIES" color="bg-[#c8b8e0]" />
+            <h2 className="display-lg text-[#0c0a09] leading-[1.08] mb-4" style={{ fontWeight: 300 }}>
+              Built on Cognee&apos;s memory lifecycle.
+            </h2>
+            <p className="text-[#4e4e4e] text-base leading-relaxed max-w-xl mx-auto tracking-[0.16px]">
+              Engineered with advanced database structures and LLM layers to automate personal context curation.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              {
-                title: "5 source types",
-                desc: "PDFs, GitHub repos, ChatGPT exports, YouTube transcripts, and web articles.",
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#292524" strokeWidth="1.5" strokeLinecap="round">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card 1: 5 source types (bg-image: capabilities-sphere.png) */}
+            <div 
+              className="p-8 rounded-3xl border border-[#e7e5e4]/50 flex flex-col justify-end min-h-[300px] md:col-span-2 relative overflow-hidden group shadow-[0_4px_16px_rgba(0,0,0,0.02)]"
+              style={{ 
+                backgroundImage: "url('/images/capabilities-sphere.png')",
+                backgroundSize: "cover",
+                backgroundPosition: "center"
+              }}
+            >
+              {/* Dark overlay for contrast */}
+              <div className="absolute inset-0 bg-[#0c0a09]/45 group-hover:bg-[#0c0a09]/50 transition-colors duration-300 z-0" />
+              
+              <div className="relative z-10 text-white">
+                <div className="mb-4 text-white/90">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <rect x="3" y="3" width="7" height="7" rx="1.5"/>
                     <rect x="14" y="3" width="7" height="7" rx="1.5"/>
                     <rect x="3" y="14" width="7" height="7" rx="1.5"/>
                     <rect x="14" y="14" width="7" height="7" rx="1.5"/>
                   </svg>
-                ),
-              },
-              {
-                title: "Reconciliation engine",
-                desc: "LLM-judged contradiction detection with structured JSON verdicts and exponential backoff.",
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#292524" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 3l5 5-5 5"/>
-                    <path d="M21 8H9"/>
-                    <path d="M8 21l-5-5 5-5"/>
-                    <path d="M3 16h12"/>
-                  </svg>
-                ),
-              },
-              {
-                title: "Time-aware decay",
-                desc: "Confidence scores degrade proportionally. Stale beliefs are automatically pruned via forget().",
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#292524" strokeWidth="1.5" strokeLinecap="round">
-                    <circle cx="12" cy="12" r="9"/>
-                    <path d="M12 7v5l3 3"/>
-                  </svg>
-                ),
-              },
-              {
-                title: "3D knowledge graph",
-                desc: "Interactive force-directed visualization with glow nodes, particle-flow links, and fly-to navigation.",
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#292524" strokeWidth="1.5" strokeLinecap="round">
-                    <circle cx="12" cy="5" r="3"/>
-                    <circle cx="5" cy="19" r="3"/>
-                    <circle cx="19" cy="19" r="3"/>
-                    <line x1="10" y1="7.5" x2="6.5" y2="16.5"/>
-                    <line x1="14" y1="7.5" x2="17.5" y2="16.5"/>
-                    <line x1="8" y1="19" x2="16" y2="19"/>
-                  </svg>
-                ),
-              },
-              {
-                title: "Structured diffs",
-                desc: "\"What changed since March?\" — Added, Removed, Changed, and New Decisions, all at a glance.",
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#292524" strokeWidth="1.5" strokeLinecap="round">
-                    <path d="M12 3v18"/>
-                    <path d="M5 12h14"/>
-                    <path d="M5 6h4"/>
-                    <path d="M5 18h4"/>
-                    <path d="M15 6h4"/>
-                    <path d="M15 18h4"/>
-                  </svg>
-                ),
-              },
-              {
-                title: "MCP server",
-                desc: "Expose your memory graph to any MCP-compatible agent or IDE via the built-in server.",
-                icon: (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#292524" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="6" width="20" height="12" rx="2"/>
-                    <path d="M6 10h.01M10 10h.01M14 10h.01"/>
-                    <path d="M6 14h12"/>
-                  </svg>
-                ),
-              },
-            ].map((feat) => (
-              <div key={feat.title} className="feat-card p-6 rounded-2xl bg-surface-card border border-hairline hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)] transition-shadow">
-                <div className="mb-4">{feat.icon}</div>
-                <h3 className="text-lg font-medium text-ink mb-2" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: "0" }}>
-                  {feat.title}
-                </h3>
-                <p className="text-sm text-body leading-relaxed" style={{ letterSpacing: "0.15px" }}>
-                  {feat.desc}
+                </div>
+                <h3 className="text-xl font-medium mb-2 font-serif">5 Source Types</h3>
+                <p className="text-sm text-white/80 leading-relaxed max-w-md">
+                  Ingests PDFs, GitHub repositories, ChatGPT conversational exports, YouTube transcripts, and web articles natively.
                 </p>
               </div>
-            ))}
+            </div>
+
+            {/* Card 2: Reconciliation engine */}
+            <div className="p-8 rounded-3xl bg-[#f5f3f1] border border-[#e7e5e4]/50 flex flex-col justify-between min-h-[300px] shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
+              <div className="text-[#292524]">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 3l5 5-5 5"/>
+                  <path d="M21 8H9"/>
+                  <path d="M8 21l-5-5 5-5"/>
+                  <path d="M3 16h12"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-[#0c0a09] mb-2 font-serif">Reconciliation Engine</h3>
+                <p className="text-sm text-[#4e4e4e] leading-relaxed">
+                  Automatic schema-level contradiction detection with interactive conflict-resolution interface.
+                </p>
+              </div>
+            </div>
+
+            {/* Card 3: Time-aware decay */}
+            <div className="p-8 rounded-3xl bg-[#f5f3f1] border border-[#e7e5e4]/50 flex flex-col justify-between min-h-[300px] shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
+              <div className="text-[#292524]">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M12 7v5l3 3"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-[#0c0a09] mb-2 font-serif">Time-Aware Decay</h3>
+                <p className="text-sm text-[#4e4e4e] leading-relaxed">
+                  Confidence scores degrade proportionally as time passes. Stale beliefs are automatically pruned via Cognee&apos;s forget API.
+                </p>
+              </div>
+            </div>
+
+            {/* Card 4: 3D knowledge graph */}
+            <div className="p-8 rounded-3xl bg-[#f5f3f1] border border-[#e7e5e4]/50 flex flex-col justify-between min-h-[300px] md:col-span-2 shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
+              <div className="text-[#292524]">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <circle cx="12" cy="5" r="3"/>
+                  <circle cx="5" cy="19" r="3"/>
+                  <circle cx="19" cy="19" r="3"/>
+                  <line x1="10" y1="7.5" x2="6.5" y2="16.5"/>
+                  <line x1="14" y1="7.5" x2="17.5" y2="16.5"/>
+                  <line x1="8" y1="19" x2="16" y2="19"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-[#0c0a09] mb-2 font-serif">3D Knowledge Graph</h3>
+                <p className="text-sm text-[#4e4e4e] leading-relaxed max-w-lg">
+                  Explore connections through an interactive force-directed WebGL visualizer. Click nodes to trace exact source lineages and update properties.
+                </p>
+              </div>
+            </div>
+
+            {/* Card 5: Structured diffs */}
+            <div className="p-8 rounded-3xl bg-[#f5f3f1] border border-[#e7e5e4]/50 flex flex-col justify-between min-h-[300px] md:col-span-2 shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
+              <div className="text-[#292524]">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M12 3v18"/>
+                  <path d="M5 12h14"/>
+                  <path d="M5 6h4"/>
+                  <path d="M5 18h4"/>
+                  <path d="M15 6h4"/>
+                  <path d="M15 18h4"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-[#0c0a09] mb-2 font-serif">Structured Diffs</h3>
+                <p className="text-sm text-[#4e4e4e] leading-relaxed max-w-lg">
+                  Audit changes seamlessly with comprehensive lists of additions, removals, modifications, and new historical decisions.
+                </p>
+              </div>
+            </div>
+
+            {/* Card 6: MCP server */}
+            <div className="p-8 rounded-3xl bg-[#f5f3f1] border border-[#e7e5e4]/50 flex flex-col justify-between min-h-[300px] shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
+              <div className="text-[#292524]">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="6" width="20" height="12" rx="2"/>
+                  <path d="M6 10h.01M10 10h.01M14 10h.01"/>
+                  <path d="M6 14h12"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-[#0c0a09] mb-2 font-serif">Built-in MCP Server</h3>
+                <p className="text-sm text-[#4e4e4e] leading-relaxed">
+                  Expose and sync your curated personal knowledge graph to custom agents or editor IDEs via standard MCP.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ═══════ 7 · CTA BAND ═══════ */}
-      <section className="relative z-10 py-24 px-6 flex flex-col items-center text-center" style={{ paddingTop: "96px", paddingBottom: "96px" }}>
-        {/* Atmospheric orb behind CTA */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] orb-sky opacity-25 blur-[80px] pointer-events-none" />
+      {/* ═══════ 8 · CTA BAND ═══════ */}
+      <section id="cta" className="relative z-10 py-24 md:py-32 px-6 bg-[#f5f5f5] text-center border-t border-[#e7e5e4] overflow-hidden">
+        
+        {/* Subtle background gradient orbs echo */}
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.06]">
+          <div className="absolute top-[20%] left-[-10%] w-[350px] h-[350px] rounded-full filter blur-[80px] bg-gradient-to-r from-[#a7e5d3] to-[#a8c8e8]" />
+          <div className="absolute bottom-[20%] right-[-10%] w-[350px] h-[350px] rounded-full filter blur-[80px] bg-gradient-to-r from-[#f4c5a8] to-[#e8b8c4]" />
+        </div>
 
-        <h2 className="relative z-10 display-xl text-ink mb-6 max-w-lg">
-          Stop re-explaining context.
-        </h2>
-        <p className="relative z-10 text-body mb-8 max-w-sm" style={{ letterSpacing: "0.16px" }}>
-          Build a memory that reconciles, decays, and keeps up with you.
-        </p>
-        <button onClick={enter}
-          className="relative z-10 px-7 py-3 rounded-full bg-primary text-on-primary text-[15px] font-medium hover:bg-primary-active transition-all cursor-pointer">
-          Initialize graph →
-        </button>
+        <div className="max-w-[800px] mx-auto flex flex-col items-center gap-8 relative z-10">
+          <SparkleIcon className="w-8 h-8 text-[#292524]/20" />
+          <h2 className="display-lg text-[#0c0a09] leading-[1.08]" style={{ fontSize: "3rem", fontWeight: 300 }}>
+            Stop re-explaining context.
+          </h2>
+          <p className="text-[#4e4e4e] text-lg max-w-md tracking-[0.16px]">
+            Build a memory graph that reconciles, decays, and actively maintains itself.
+          </p>
+          <button onClick={enter}
+            className="px-8 py-4 rounded-full bg-[#292524] text-white text-[15px] font-medium hover:bg-black transition-all duration-300 cursor-pointer">
+            Initialize graph →
+          </button>
+        </div>
       </section>
 
-      {/* ═══════ FOOTER ═══════ */}
-      <footer className="relative z-10 border-t border-hairline bg-canvas" style={{ padding: "64px 48px" }}>
-        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <Image
-            src="/synapse-logo.png"
-            alt="Synapse"
-            width={84}
-            height={24}
-            className="object-contain"
-          />
-          <p className="text-[15px] text-body" style={{ letterSpacing: "0.15px" }}>
-            Built for WeMakeDevs × Cognee Hackathon 2026
-          </p>
-          <div className="flex items-center gap-4">
-            <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer"
-              className="text-[15px] text-body hover:text-ink transition-colors">GitHub</a>
+      {/* ═══════ 9 · FOOTER ═══════ */}
+      <footer id="footer" className="relative z-10 bg-[#f5f5f5] border-t border-[#e7e5e4] py-16 px-6 select-none text-[13px]">
+        <div className="max-w-[1200px] mx-auto grid grid-cols-2 md:grid-cols-5 gap-12 text-[#4e4e4e]">
+          
+          {/* Column 1: Brand details */}
+          <div className="col-span-2 flex flex-col items-start gap-4">
+            <Image
+              src="/images/synapse-logo.png"
+              alt="Synapse Logo"
+              width={80}
+              height={22}
+              className="object-contain"
+            />
+            <p className="max-w-[200px] text-[#777169] leading-relaxed">
+              Autonomous memory visualization layers running on top of Cognee&apos;s semantic engine.
+            </p>
           </div>
+
+          {/* Column 2: Product */}
+          <div className="flex flex-col gap-3">
+            <span className="font-semibold text-[#0c0a09] uppercase tracking-wider text-[10px]">Product</span>
+            <a href="#section-ingest" onClick={(e) => handleNavClick(e, "#section-ingest")} className="hover:text-[#0c0a09] transition-colors">Pipeline Ingest</a>
+            <a href="#section-resolve" onClick={(e) => handleNavClick(e, "#section-resolve")} className="hover:text-[#0c0a09] transition-colors">Reconciliation</a>
+            <a href="#section-decay" onClick={(e) => handleNavClick(e, "#section-decay")} className="hover:text-[#0c0a09] transition-colors">Memory Health</a>
+          </div>
+
+          {/* Column 3: Resources */}
+          <div className="flex flex-col gap-3">
+            <span className="font-semibold text-[#0c0a09] uppercase tracking-wider text-[10px]">Resources</span>
+            <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer" className="hover:text-[#0c0a09] transition-colors">GitHub</a>
+            <a href="https://github.com/IamNishant51/Synapse----Ai-/blob/main/README.md" target="_blank" rel="noreferrer" className="hover:text-[#0c0a09] transition-colors">Documentation</a>
+            <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer" className="hover:text-[#0c0a09] transition-colors">Video Demo</a>
+          </div>
+
+          {/* Column 4: Tech Stack */}
+          <div className="flex flex-col gap-3">
+            <span className="font-semibold text-[#0c0a09] uppercase tracking-wider text-[10px]">Frameworks</span>
+            <a href="https://cognee.ai" target="_blank" rel="noreferrer" className="hover:text-[#0c0a09] transition-colors">Cognee SDK</a>
+            <a href="https://nextjs.org" target="_blank" rel="noreferrer" className="hover:text-[#0c0a09] transition-colors">Next.js 15</a>
+            <a href="https://fastapi.tiangolo.com" target="_blank" rel="noreferrer" className="hover:text-[#0c0a09] transition-colors">FastAPI</a>
+          </div>
+
+        </div>
+
+        <div className="max-w-[1200px] mx-auto mt-16 pt-8 border-t border-[#e7e5e4] flex flex-col md:flex-row items-center justify-between gap-4 text-[#777169]">
+          <p>© 2026 Synapse AI. Built for WeMakeDevs x Cognee Hackathon.</p>
+          <a href="https://github.com/IamNishant51/Synapse----Ai-" target="_blank" rel="noreferrer" className="hover:text-[#0c0a09] transition-colors">Repository Home</a>
         </div>
       </footer>
     </div>

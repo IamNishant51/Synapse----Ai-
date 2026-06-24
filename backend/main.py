@@ -14,6 +14,7 @@ from services import (
     get_ingestion_job,
     get_graph_snapshot,
     answer_query,
+    get_ask_topics,
     get_conflict_events,
     resolve_conflict,
     run_decay_check,
@@ -74,6 +75,11 @@ async def recall(req: RecallRequest):
     return await answer_query(req)
 
 
+@app.get("/topics")
+async def ask_topics():
+    return get_ask_topics()
+
+
 @app.get("/reconciliation/events")
 async def reconciliation_events():
     return await get_conflict_events()
@@ -121,4 +127,3 @@ async def forget_node_endpoint(req: ForgetNodeRequest):
 async def forget_source_endpoint(req: ForgetSourceRequest):
     await forget_source(req.sourceId)
     return {"status": "ok"}
-

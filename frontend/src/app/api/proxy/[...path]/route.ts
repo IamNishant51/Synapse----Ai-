@@ -30,7 +30,7 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
         "Content-Type": res.headers.get("Content-Type") || "application/json",
       },
     });
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ error: "Proxy error" }, { status: 500 });
   }
 }

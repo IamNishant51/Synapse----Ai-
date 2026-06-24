@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { getIngestionJob } from "@/lib/api";
 import type { IngestionStep } from "@/lib/types";
 
@@ -28,15 +28,15 @@ export function IngestionProvider({ children }: { children: React.ReactNode }) {
   const failCountRef = useRef(0);
   const MAX_FAILURES = 5;
 
-  const stopPolling = () => {
+  const stopPolling = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-  };
+  }, []);
 
   // Helper function to start polling
-  const startPolling = (id: string) => {
+  const startPolling = useCallback((id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     failCountRef.current = 0;
     
@@ -58,7 +58,7 @@ export function IngestionProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("active_ingestion_job_status", "failed");
           stopPolling();
         }
-      } catch (err) {
+      } catch {
         failCountRef.current += 1;
         // Job not found (stale localStorage from previous session) or too many failures — give up
         if (failCountRef.current >= MAX_FAILURES) {
@@ -70,7 +70,7 @@ export function IngestionProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }, 1000);
-  };
+  }, [stopPolling]);
 
   // Read initial job state from localStorage to persist across navigation and reloads
   useEffect(() => {
@@ -97,7 +97,7 @@ export function IngestionProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("active_ingestion_job_status");
       });
     }
-  }, []);
+  }, [startPolling]);
 
   const startSync = (id: string) => {
     setJobId(id);
@@ -120,10 +120,9 @@ export function IngestionProvider({ children }: { children: React.ReactNode }) {
     stopPolling();
   };
 
-  // Clean up interval on unmount
   useEffect(() => {
     return stopPolling;
-  }, []);
+  }, [stopPolling]);
 
   return (
     <IngestionContext.Provider value={{ jobId, jobStatus, currentStep, progress, error, startSync, resetSync }}>

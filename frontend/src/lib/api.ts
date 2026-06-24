@@ -84,6 +84,10 @@ export async function answerQuery(query: string, signal?: AbortSignal): Promise<
   });
 }
 
+export async function getAskTopics(): Promise<{ trackedTopics: string[]; timelineTopics: string[] }> {
+  return fetchAPI("/topics");
+}
+
 export async function runDecayCheck(): Promise<{ forgotten: number; decayed: number }> {
   return fetchAPI("/decay/run", {
     method: "POST",

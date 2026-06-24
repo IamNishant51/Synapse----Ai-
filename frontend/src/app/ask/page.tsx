@@ -1,16 +1,36 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import EmptyState from "@/components/EmptyState";
 import SourcePill from "@/components/SourcePill";
 import { useChat } from "@/context/ChatContext";
-import type { ChatMessage, DiffCard, TimelinePoint } from "@/lib/types";
+import { getAskTopics } from "@/lib/api";
+import type { DiffCard, TimelinePoint } from "@/lib/types";
 
-const promptChips = [
-  "What changed about Canvas Theme?",
-  "What did I believe about Typography Choice before vs now?",
-  "What are the Backend Security decisions I've made?",
+const fallbackPromptChips = [
+  "What changed about my tracked topics?",
+  "What decisions have I made recently?",
+  "What does Synapse know about my current sources?",
 ];
+
+function buildPromptChips(trackedTopics: string[], timelineTopics: string[]) {
+  const chips: string[] = [];
+
+  if (trackedTopics[0]) {
+    chips.push(`What changed about ${trackedTopics[0]}?`);
+  }
+  if (timelineTopics[0]) {
+    chips.push(`What did I believe about ${timelineTopics[0]} before vs now?`);
+  }
+  if (trackedTopics[1]) {
+    chips.push(`What decisions have I made about ${trackedTopics[1]}?`);
+  }
+  if (trackedTopics[2]) {
+    chips.push(`What changed about ${trackedTopics[2]}?`);
+  }
+
+  return chips.length > 0 ? chips.slice(0, 3) : fallbackPromptChips;
+}
 
 function DiffCardView({ diff }: { diff: DiffCard }) {
   return (
@@ -228,6 +248,7 @@ export default function AskPage() {
   const historyRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
+  const [promptChips, setPromptChips] = useState<string[]>(fallbackPromptChips);
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -253,6 +274,29 @@ export default function AskPage() {
     if (showHistory) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showHistory, setShowHistory]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPromptChips = async () => {
+      try {
+        const { trackedTopics, timelineTopics } = await getAskTopics();
+        if (!cancelled) {
+          setPromptChips(buildPromptChips(trackedTopics, timelineTopics));
+        }
+      } catch {
+        if (!cancelled) {
+          setPromptChips(fallbackPromptChips);
+        }
+      }
+    };
+
+    loadPromptChips();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="h-full flex flex-col bg-canvas relative overflow-hidden selection:bg-gradient-sky/40">
@@ -420,4 +464,3 @@ export default function AskPage() {
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import IngestionStepper from "@/components/IngestionStepper";
 import { ingestSource } from "@/lib/api";
 import type { SourceType } from "@/lib/types";
@@ -24,11 +24,12 @@ export default function IngestPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  const selectTab = (tabKey: Tab) => {
+    setActiveTab(tabKey);
     setPathFilter("");
-    if (activeTab !== "conversation") setSourceLabel("");
-    if (activeTab === "pdf") setPdfFiles([]);
-  }, [activeTab]);
+    if (tabKey !== "conversation") setSourceLabel("");
+    if (tabKey === "pdf") setPdfFiles([]);
+  };
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "github", label: "GitHub" },
@@ -138,7 +139,7 @@ export default function IngestPage() {
           {tabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => { if (!isDisabled) setActiveTab(tab.key); }}
+              onClick={() => { if (!isDisabled) selectTab(tab.key); }}
               disabled={isDisabled}
               className={`px-5 py-2 rounded-lg md:rounded-full text-sm font-medium transition-all duration-150 cursor-pointer shrink-0 ${
                 activeTab === tab.key
@@ -316,7 +317,7 @@ export default function IngestPage() {
                   : "bg-primary text-on-primary hover:bg-primary-active active:scale-[0.98]"
               }`}
             >
-              {jobStatus === "idle" ? "Sync Now" : jobStatus === "running" ? "Syncing…" : "Done — Sync Another"}
+              {jobStatus === "idle" ? "Sync Now" : jobStatus === "running" ? `Syncing… (${progress}%)` : "Done — Sync Another"}
             </button>
             {(apiError || error) && <span className="text-sm text-semantic-error font-medium">{apiError || error}</span>}
           </div>

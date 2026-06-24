@@ -12,7 +12,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   if (isLanding) {
     return (
       <IngestionProvider>
-        <div className="h-full w-full">{children}</div>
+        <div className="w-full relative">{children}</div>
       </IngestionProvider>
     );
   }

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
@@ -326,7 +327,14 @@ export default function GraphPage() {
   const linkThreeObject = useCallback((link: any) => {
     const color = link.confidence >= 0.8 ? COLORS.particle : COLORS.edge;
     const geo = new THREE.BufferGeometry();
-    const points = [link.source.x || 0, link.source.y || 0, link.source.z || 0, link.target.x || 0, link.target.y || 0, link.target.z || 0];
+    const points = [
+      link.source.x || 0,
+      link.source.y || 0,
+      link.source.z || 0,
+      link.target.x || 0,
+      link.target.y || 0,
+      link.target.z || 0,
+    ];
     geo.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
     const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4 });
     return new THREE.Line(geo, mat);

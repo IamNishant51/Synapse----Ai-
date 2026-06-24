@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getDecaySettings, updateDecaySettings, runDecayCheck, getSources, searchNodes, forgetSource, forgetNode } from "@/lib/api";
 import type { Source } from "@/lib/types";
+import { useIngestion } from "@/context/IngestionContext";
 
 function formatDate(iso: string) {
   try {
@@ -16,6 +17,7 @@ function formatDate(iso: string) {
 }
 
 export default function SettingsPage() {
+  const { jobStatus, progress } = useIngestion();
   const [decayStart, setDecayStart] = useState(60);
   const [forgetThreshold, setForgetThreshold] = useState(180);
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,7 +30,10 @@ export default function SettingsPage() {
   const [gitHubConnected, setGitHubConnected] = useState(false);
 
   useEffect(() => {
-    setGitHubConnected(localStorage.getItem("github_connected") === "true");
+    const isConnected = localStorage.getItem("github_connected") === "true";
+    Promise.resolve().then(() => {
+      setGitHubConnected(isConnected);
+    });
   }, []);
 
   const handleConnectGitHub = () => {
@@ -58,7 +63,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setSearchResults([]);
+      Promise.resolve().then(() => {
+        setSearchResults([]);
+      });
       return;
     }
     const timer = setTimeout(async () => {
@@ -280,7 +287,7 @@ export default function SettingsPage() {
                     <path d="M4 7h6" stroke="#777169" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
                   <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5">
-                    <span className="text-[14px] font-semibold text-ink truncate">{source.label}</span>
+                    <span className="text-[14px] font-semibold text-ink truncate">{source.label}</span>{" "}
                     <span className="text-[10px] font-semibold text-muted bg-surface-strong px-2 py-0.5 rounded-full uppercase tracking-wider w-fit">{source.type}</span>
                   </div>
                 </div>
@@ -299,9 +306,11 @@ export default function SettingsPage() {
                           ? "bg-primary animate-pulse"
                           : "bg-semantic-error"
                     }`} />
-                    {source.status === "processing" ? "processing…" : source.status}
-                  </span>
-                  <span className="text-xs text-muted-soft font-mono">{formatDate(source.ingestedAt)}</span>
+                    {source.status === "processing"
+                      ? (jobStatus === "running" ? `Syncing… (${progress}%)` : "processing…")
+                      : source.status}
+                  </span>{" "}
+                  <span className="text-xs text-muted-soft font-mono">{formatDate(source.ingestedAt)}</span>{" "}
                   <button
                     onClick={() => handleDeleteSource(source.id)}
                     className="text-xs font-semibold text-semantic-error hover:text-semantic-error/85 transition-colors cursor-pointer"
