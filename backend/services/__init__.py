@@ -263,10 +263,33 @@ async def fetch_github_repo_content(repo_url: str, path_filter: Optional[str] = 
     except Exception as zip_err:
         raise ValueError(f"Failed to parse repository zip archive: {zip_err}")
                     
-    if not concatenated:
-        raise ValueError("No matching text/code files found in repository")
-        
-    return "\n".join(concatenated), file_paths
+    # Fetch recent commits via API
+    commits_text = ""
+    try:
+        commits_url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=50"
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+            resp = await client.get(commits_url, headers=headers)
+            if resp.status_code == 200:
+                commits_data = resp.json()
+                commits_lines = ["\n\n--- REPOSITORY COMMITS HISTORY ---"]
+                for c in commits_data:
+                    sha = c.get("sha", "")[:8]
+                    commit_info = c.get("commit", {})
+                    author = commit_info.get("author", {})
+                    date = author.get("date", "")
+                    author_name = author.get("name", "")
+                    message = commit_info.get("message", "")
+                    first_line = message.strip().split("\n")[0] if message else ""
+                    commits_lines.append(f"Commit {sha} by {author_name} on {date}: {first_line}")
+                commits_text = "\n".join(commits_lines)
+    except Exception as e:
+        print(f"[Scraper] Failed to fetch commits history for {owner}/{repo}: {e}", flush=True)
+
+    result_content = "\n".join(concatenated)
+    if commits_text:
+        result_content += commits_text
+
+    return result_content, file_paths
 
 
 async def save_base64_pdf(content_str: str, label: str) -> str:
@@ -759,6 +782,56 @@ def get_relevant_db_context(query: str, db_sources: list, db_conflicts: list) ->
     return relevant_lines
 
 
+_commits_cache: dict[str, tuple[float, str]] = {}
+COMMITS_CACHE_TTL = 300  # 5 minutes
+
+async def fetch_github_commits(repo_url: str) -> str:
+    import time
+    url = repo_url.strip().rstrip("/")
+    if url.endswith(".git"):
+        url = url[:-4]
+        
+    if url in _commits_cache:
+        ts, cached_val = _commits_cache[url]
+        if time.time() - ts < COMMITS_CACHE_TTL:
+            return cached_val
+
+    parts = url.split("/")
+    if len(parts) < 5 or "github.com" not in parts[2]:
+        return ""
+        
+    owner = parts[3]
+    repo = parts[4]
+    
+    headers = {
+        "User-Agent": "Synapse-Cognee-Scraper",
+        "Accept": "application/vnd.github+json"
+    }
+    
+    commits_url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=30"
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+            resp = await client.get(commits_url, headers=headers)
+            if resp.status_code == 200:
+                commits_data = resp.json()
+                commits_lines = [f"\n--- Recent Git Commits for {owner}/{repo} ---"]
+                for c in commits_data:
+                    sha = c.get("sha", "")[:8]
+                    commit_info = c.get("commit", {})
+                    author = commit_info.get("author", {})
+                    date = author.get("date", "")
+                    author_name = author.get("name", "")
+                    message = commit_info.get("message", "")
+                    first_line = message.strip().split("\n")[0] if message else ""
+                    commits_lines.append(f"- Commit {sha} by {author_name} on {date}: {first_line}")
+                commits_text = "\n".join(commits_lines)
+                _commits_cache[url] = (time.time(), commits_text)
+                return commits_text
+    except Exception as e:
+        print(f"[LLM-Commits] Failed to fetch commits history for {owner}/{repo}: {e}", flush=True)
+    return ""
+
+
 async def answer_query(req: RecallRequest) -> ChatMessage:
     query = req.query.lower()
     msg_id = str(uuid.uuid4())
@@ -775,6 +848,15 @@ async def answer_query(req: RecallRequest) -> ChatMessage:
     # Build filtered knowledge graph context for the LLM
     graph_ctx_lines = ["Knowledge Graph Contents:"]
     graph_ctx_lines.extend(get_relevant_db_context(req.query, db_sources, db_conflicts))
+
+    # Dynamically inject git commit history for history-related queries if github sources are present
+    history_keywords = {"changed", "change", "changes", "commit", "commits", "history", "git", "since", "repository", "author", "march"}
+    if any(k in query for k in history_keywords):
+        for s in db_sources:
+            if s.type == "github" and s.url:
+                commits_ctx = await fetch_github_commits(s.url)
+                if commits_ctx:
+                    graph_ctx_lines.append(commits_ctx)
 
     # Enrich with Cognee recall results from the actual graph
     if COGNEE_READY:
