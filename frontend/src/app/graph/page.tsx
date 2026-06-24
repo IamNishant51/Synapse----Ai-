@@ -52,6 +52,149 @@ function nodeColor(node: GraphNode) {
   return COLORS.stale;
 }
 
+function GraphLoadingSkeleton() {
+  const nodes: { cx: number; cy: number; r: number }[] = [
+    { cx: 50, cy: 30, r: 6 },
+    { cx: 120, cy: 20, r: 5 },
+    { cx: 190, cy: 40, r: 5.5 },
+    { cx: 35, cy: 100, r: 5 },
+    { cx: 120, cy: 95, r: 7 },
+    { cx: 200, cy: 95, r: 5 },
+    { cx: 80, cy: 160, r: 5.5 },
+    { cx: 160, cy: 165, r: 5 },
+  ];
+  const edges: [number, number][] = [
+    [0, 1], [0, 3], [1, 2], [1, 4],
+    [2, 5], [3, 4], [3, 6], [4, 5],
+    [4, 7], [5, 7], [6, 7],
+  ];
+
+  const nodeColor = (i: number) =>
+    i === 4 ? "#292524" : i % 2 === 0 ? "#777169" : "#a8a29e";
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center z-10 bg-canvas">
+      <div className="flex flex-col items-center gap-8">
+        <svg width="200" height="180" viewBox="0 0 240 200" className="overflow-visible">
+          {edges.map(([si, ti], i) => {
+            const s = nodes[si];
+            const t = nodes[ti];
+            return (
+              <line
+                key={`e${i}`}
+                x1={s.cx} y1={s.cy} x2={t.cx} y2={t.cy}
+                stroke="#d6d3d1"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeDasharray="200"
+                strokeDashoffset="200"
+                opacity="0"
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="200" to="0"
+                  dur="0.6s"
+                  begin={`${0.5 + i * 0.08}s`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keySplines="0.16 1 0.3 1"
+                  keyTimes="0;1"
+                />
+                <animate
+                  attributeName="opacity"
+                  from="0" to="0.35"
+                  dur="0.3s"
+                  begin={`${0.5 + i * 0.08}s`}
+                  fill="freeze"
+                />
+              </line>
+            );
+          })}
+          {nodes.map((n, i) => (
+            <g key={`n${i}`} opacity="0">
+              <animate
+                attributeName="opacity"
+                from="0" to="1"
+                dur="0.4s"
+                begin={`${i * 0.15}s`}
+                fill="freeze"
+              />
+              <circle cx={n.cx} cy={n.cy} r="0">
+                <animate
+                  attributeName="r"
+                  from="0" to={n.r * 3}
+                  dur="0.4s"
+                  begin={`${i * 0.15}s`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keySplines="0.16 1 0.3 1"
+                  keyTimes="0;1"
+                />
+                <animate
+                  attributeName="opacity"
+                  from="0.3" to="0"
+                  dur="0.4s"
+                  begin={`${i * 0.15}s`}
+                  fill="freeze"
+                />
+              </circle>
+              <circle cx={n.cx} cy={n.cy} r={n.r} fill={nodeColor(i)}>
+                <animate
+                  attributeName="r"
+                  from="0" to={n.r}
+                  dur="0.35s"
+                  begin={`${i * 0.15}s`}
+                  fill="freeze"
+                  calcMode="spline"
+                  keySplines="0.16 1 0.3 1"
+                  keyTimes="0;1"
+                >
+                </animate>
+                <animate
+                  attributeName="opacity"
+                  from="0" to="1"
+                  dur="0.2s"
+                  begin={`${i * 0.15 + 0.15}s`}
+                  fill="freeze"
+                />
+              </circle>
+              <circle
+                cx={n.cx} cy={n.cy} r={n.r + 4}
+                fill="none"
+                stroke={nodeColor(i)}
+                strokeWidth="0.5"
+                opacity="0.15"
+              >
+                <animateTransform
+                  attributeName="transform"
+                  type="rotate"
+                  from={`0 ${n.cx} ${n.cy}`}
+                  to={`360 ${n.cx} ${n.cy}`}
+                  dur="5s"
+                  repeatCount="indefinite"
+                  begin={`${i * 0.15 + 0.5}s`}
+                />
+              </circle>
+            </g>
+          ))}
+        </svg>
+
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1">
+              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0s", animationDuration: "1.2s" }} />
+              <span className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: "0.15s", animationDuration: "1.2s" }} />
+              <span className="w-2 h-2 rounded-full bg-muted-soft animate-bounce" style={{ animationDelay: "0.3s", animationDuration: "1.2s" }} />
+            </div>
+            <span className="text-sm font-medium text-muted tracking-wide">Loading memory graph</span>
+          </div>
+          <p className="text-xs text-muted-soft tracking-wide">Nodes and edges forming</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GraphPage() {
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
@@ -202,14 +345,7 @@ export default function GraphPage() {
   return (
     <div className="h-full flex flex-col md:flex-row overflow-hidden relative bg-canvas selection:bg-gradient-mint/40">
       <div ref={containerRef} className="flex-1 relative h-full w-full min-w-0 min-h-0" onDoubleClick={handleBackgroundClick}>
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-canvas">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-semibold text-muted">Loading memory graph…</span>
-            </div>
-          </div>
-        )}
+        {loading && <GraphLoadingSkeleton />}
 
         {error && (
           <div className="absolute inset-0 flex items-center justify-center z-10 bg-canvas">
