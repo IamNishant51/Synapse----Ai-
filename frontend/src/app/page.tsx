@@ -963,9 +963,9 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Real Screenshot with Browser Frame */}
-          <div className="md:col-span-7 flex flex-col items-center gap-6 relative">
-            <BrowserChrome url="localhost:3000/graph" className="relative z-10">
+          {/* Real Screenshot */}
+          <div className="md:col-span-7 flex flex-col items-center gap-6 relative w-full">
+            <div className="relative z-10 w-full overflow-hidden rounded-2xl border border-[#e7e5e4] shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
               <Image
                 src="/images/graph_screenshot.jpg"
                 alt="Synapse Metadata Graph Screen"
@@ -974,7 +974,7 @@ export default function LandingPage() {
                 className="w-full h-auto object-cover"
                 priority
               />
-            </BrowserChrome>
+            </div>
             
             <div className="absolute -top-4 -right-4 bg-white border border-[#e7e5e4] px-3 py-1 rounded-full text-[10px] font-mono shadow-sm z-20 select-none">
               Interactive 3D Layer
