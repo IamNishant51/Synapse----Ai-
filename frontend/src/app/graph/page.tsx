@@ -755,7 +755,7 @@ export default function GraphPage() {
               )
             )}
 
-            <div className="absolute bottom-20 md:bottom-6 left-4 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2.5 md:gap-4 px-4 py-3 rounded-2xl md:rounded-full bg-surface-card border border-hairline shadow-md z-10 pointer-events-none md:pointer-events-auto">
+            <div className="absolute bottom-20 md:bottom-6 left-4 right-4 md:left-6 md:right-auto flex flex-col md:flex-row items-start md:items-center gap-2.5 md:gap-4 px-4 py-3 rounded-2xl md:rounded-full bg-surface-card border border-hairline shadow-md z-10 pointer-events-none md:pointer-events-auto">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-muted font-semibold uppercase tracking-wider">Memory Health</span>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${

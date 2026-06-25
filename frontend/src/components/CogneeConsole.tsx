@@ -74,7 +74,7 @@ export default function CogneeConsole() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 md:left-64 z-30 pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full border border-hairline bg-surface-card hover:bg-surface-strong shadow-md text-xs font-semibold text-body select-none active:scale-[0.98] transition-all duration-150 cursor-pointer"
+        className="fixed top-4 left-4 md:bottom-6 md:right-6 md:left-auto md:top-auto z-30 pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full border border-hairline bg-surface-card hover:bg-surface-strong shadow-md text-xs font-semibold text-body select-none active:scale-[0.98] transition-all duration-150 cursor-pointer"
       >
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-semantic-success opacity-75"></span>
@@ -89,7 +89,7 @@ export default function CogneeConsole() {
   }
 
   return (
-    <div className="fixed bottom-6 left-6 md:left-64 z-30 pointer-events-auto w-[360px] max-w-[calc(100vw-3rem)] h-64 bg-[#0c0a09] border border-stone-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-slide-in-up">
+    <div className="fixed top-4 left-4 md:bottom-6 md:right-6 md:left-auto md:top-auto z-30 pointer-events-auto w-[360px] max-w-[calc(100vw-3rem)] h-64 bg-[#0c0a09] border border-stone-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-slide-in-up">
       {/* Console Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-stone-900 border-b border-stone-800">
         <div className="flex items-center gap-2">
