@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -17,8 +18,12 @@ export default function LoginPage() {
         const data = await res.json();
         if (data.authenticated) {
           router.push("/graph");
+        } else {
+          setAuthChecked(true);
         }
-      } catch {}
+      } catch {
+        setAuthChecked(true);
+      }
     };
     checkAuth();
   }, [router]);
@@ -47,6 +52,19 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-canvas flex items-center justify-center relative overflow-hidden">
+        <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] orb-lavender opacity-30 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-15%] left-[-10%] w-[400px] h-[400px] orb-mint opacity-25 blur-[90px] pointer-events-none" />
+        <div className="flex flex-col items-center gap-3 animate-pulse">
+          <div className="h-8 w-32 bg-surface-strong/60 rounded-md" />
+          <span className="text-xs text-muted font-medium">Checking session…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-canvas text-ink flex items-center justify-center p-4 selection:bg-gradient-lavender/40 relative overflow-hidden">
