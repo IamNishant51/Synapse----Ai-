@@ -731,7 +731,7 @@ export default function GraphPage() {
               )
             )}
 
-            <div className="absolute bottom-20 md:bottom-6 left-4 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2.5 md:gap-4 px-4 py-3 rounded-full bg-surface-card border border-hairline shadow-md z-10 pointer-events-none md:pointer-events-auto">
+            <div className="absolute bottom-20 md:bottom-6 left-4 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2.5 md:gap-4 px-4 py-3 rounded-2xl md:rounded-full bg-surface-card border border-hairline shadow-md z-10 pointer-events-none md:pointer-events-auto">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-muted font-semibold uppercase tracking-wider">Memory Health</span>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
@@ -782,7 +782,7 @@ export default function GraphPage() {
 
             <Link
               href="/resolve"
-              className={`absolute ${showAIBanner ? "top-26 md:top-28" : "top-4 md:top-6"} right-4 md:right-6 flex items-center gap-2 px-4 py-2 rounded-full bg-surface-card border border-hairline z-10 hover:bg-surface-strong transition-all duration-300 cursor-pointer shadow-md`}
+              className={`absolute ${showAIBanner ? "top-52 sm:top-28" : "top-4 md:top-6"} right-4 md:right-6 flex items-center gap-2 px-4 py-2 rounded-full bg-surface-card border border-hairline z-10 hover:bg-surface-strong transition-all duration-300 cursor-pointer shadow-md`}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="6" stroke="#e0a328" strokeWidth="1.3" />
