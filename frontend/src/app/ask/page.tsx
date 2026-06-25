@@ -272,6 +272,7 @@ function parseMarkdown(text: string) {
 export default function AskPage() {
   const {
     messages,
+    setMessages,
     input,
     setInput,
     isProcessing,
@@ -284,7 +285,23 @@ export default function AskPage() {
     switchToConversation,
     deleteConversation,
   } = useChat();
-  const { openModal } = useAIConfig();
+  const { openModal, config, isJudgeAuthorized, isModalOpen } = useAIConfig();
+  
+  const prevModalOpenRef = useRef(false);
+
+  useEffect(() => {
+    const prevModalOpen = prevModalOpenRef.current;
+    if (prevModalOpen && !isModalOpen && (config?.configured || isJudgeAuthorized)) {
+      if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.isError && lastMsg.answer.includes("required")) {
+          setMessages((prev) => prev.slice(0, -1));
+          handleSubmit(lastMsg.query);
+        }
+      }
+    }
+    prevModalOpenRef.current = isModalOpen;
+  }, [isModalOpen, config, isJudgeAuthorized, messages, handleSubmit, setMessages]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
