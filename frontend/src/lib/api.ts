@@ -32,7 +32,7 @@ function parseAPIError(status: number, body: string): string {
   } catch {}
   
   if (status === 403) {
-    return "A judge access token or your own API key is required to use AI features.";
+    return "Access denied.";
   }
   if (status === 401) {
     return "Unauthorized session. Please check your credentials.";
@@ -200,10 +200,4 @@ export async function getAIModels(provider: string, key: string): Promise<{ mode
   return fetchAPI(`/ai/models?provider=${encodeURIComponent(provider)}&key=${encodeURIComponent(key)}`);
 }
 
-export async function verifyJudgeToken(token: string): Promise<{ status: string }> {
-  return fetchAPI("/ai/judge-auth", {
-    method: "POST",
-    body: JSON.stringify({ token }),
-  });
-}
 

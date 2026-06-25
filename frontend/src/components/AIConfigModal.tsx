@@ -11,11 +11,10 @@ function getCleanErrorMessage(err: unknown): string {
 }
 
 export default function AIConfigModal() {
-  const { isModalOpen, closeModal, refreshConfig, config, saveJudgeToken, isJudgeAuthorized } = useAIConfig();
+  const { isModalOpen, closeModal, refreshConfig, config } = useAIConfig();
   const { addToast } = useToast();
 
-  const [flowType, setFlowType] = useState<"none" | "byok" | "judge">("none");
-  const [step, setStep] = useState(1); // 1: Provider, 2: Key, 3: Model (for BYOK)
+  const [step, setStep] = useState(1);
   const [provider, setProvider] = useState<"groq" | "openai" | "gemini">("groq");
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -25,38 +24,26 @@ export default function AIConfigModal() {
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Judge flow state
-  const [judgeToken, setJudgeToken] = useState("");
-  const [showJudgeToken, setShowJudgeToken] = useState(false);
-  const [authorizingJudge, setAuthorizingJudge] = useState(false);
-  
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Initialize flow type on open
   useEffect(() => {
     if (isModalOpen) {
       Promise.resolve().then(() => {
         setErrorMsg("");
         setModels([]);
-        setJudgeToken("");
         setApiKey("");
-        
+
         if (config?.configured) {
-          setFlowType("byok");
           setProvider((config.provider as "groq" | "openai" | "gemini") || "groq");
           setSelectedModel(config.model || "");
           setStep(2);
-        } else if (isJudgeAuthorized) {
-          setFlowType("judge");
         } else {
-          setFlowType("none");
           setStep(1);
         }
       });
     }
-  }, [isModalOpen, config, isJudgeAuthorized]);
+  }, [isModalOpen, config]);
 
-  // Handle escape key to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeModal();
@@ -130,44 +117,22 @@ export default function AIConfigModal() {
     }
   };
 
-  const handleAuthorizeJudge = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!judgeToken.trim()) {
-      setErrorMsg("Please enter a token");
-      return;
-    }
-
-    setAuthorizingJudge(true);
-    setErrorMsg("");
-
-    const success = await saveJudgeToken(judgeToken.trim());
-    setAuthorizingJudge(false);
-
-    if (success) {
-      closeModal();
-    } else {
-      setErrorMsg("Invalid judge access token. Please check the README and try again.");
-    }
-  };
-
   if (!isModalOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 backdrop-blur-sm p-4 animate-fade-in">
-      <div 
+      <div
         ref={modalRef}
         className="w-full max-w-xl rounded-2xl border border-hairline bg-surface-card p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.08)] relative overflow-hidden"
       >
-        {/* Ambient top light */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-12 bg-gradient-to-b from-primary/10 to-transparent blur-md pointer-events-none" />
 
-        {/* Header */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-hairline-soft">
           <div>
             <h3 className="text-lg font-semibold text-ink">Add AI to Synapse</h3>
             <p className="text-xs text-muted mt-0.5">Activate search grounding, memory reconciliation, and queries</p>
           </div>
-          <button 
+          <button
             onClick={closeModal}
             className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface-strong transition-colors cursor-pointer"
             aria-label="Close modal"
@@ -178,7 +143,6 @@ export default function AIConfigModal() {
           </button>
         </div>
 
-        {/* Error message */}
         {errorMsg && (
           <div className="mb-5 p-3.5 rounded-xl bg-semantic-error/10 border border-semantic-error/15 text-xs text-semantic-error font-medium flex items-start gap-2.5">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5">
@@ -189,147 +153,8 @@ export default function AIConfigModal() {
           </div>
         )}
 
-        {/* Initial Choice Screen */}
-        {flowType === "none" && (
-          <div className="space-y-6 py-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Option 1: BYOK */}
-              <button
-                onClick={() => setFlowType("byok")}
-                className="flex flex-col text-left p-6 rounded-2xl border border-hairline bg-surface-card hover:border-primary hover:bg-surface-strong/30 transition-all duration-200 cursor-pointer group"
-              >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform text-primary">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                </div>
-                <h4 className="text-sm font-bold text-ink">Bring Your Own Key</h4>
-                <p className="text-xs text-muted mt-2 leading-relaxed flex-1">
-                  Connect Groq, OpenAI, or Gemini using your own API credentials. Supports live model discovery.
-                </p>
-                <span className="text-xs font-semibold text-primary mt-4 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                  Choose Provider &rarr;
-                </span>
-              </button>
-
-              {/* Option 2: Judge Access Token */}
-              <button
-                onClick={() => setFlowType("judge")}
-                className="flex flex-col text-left p-6 rounded-2xl border border-hairline bg-surface-card hover:border-primary hover:bg-surface-strong/30 transition-all duration-200 cursor-pointer group"
-              >
-                <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform text-amber-500">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="8" r="7" />
-                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
-                  </svg>
-                </div>
-                <h4 className="text-sm font-bold text-ink">Judge Access Token</h4>
-                <p className="text-xs text-muted mt-2 leading-relaxed flex-1">
-                  Reviewing this for the Cognee hackathon? Enter the access key shared in the README to run on server keys.
-                </p>
-                <span className="text-xs font-semibold text-amber-600 mt-4 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                  Enter Token &rarr;
-                </span>
-              </button>
-            </div>
-            
-            <div className="text-center pt-2">
-              <a
-                href="mailto:anonymouslucifer400@gmail.com?subject=Synapse%20Access%20Key%20Request"
-                className="text-[11px] text-muted hover:text-ink hover:underline transition-colors"
-              >
-                Don&apos;t have a key? Request judge access
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* Flow: Judge Access Token */}
-        {flowType === "judge" && (
-          <form onSubmit={handleAuthorizeJudge} className="space-y-5">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-muted-soft uppercase tracking-wider">
-                  Enter Judge Access Token
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setFlowType("none")}
-                  className="text-xs text-primary hover:underline font-semibold"
-                >
-                  Change Flow
-                </button>
-              </div>
-
-              <div className="relative">
-                <input
-                  type={showJudgeToken ? "text" : "password"}
-                  value={judgeToken}
-                  onChange={(e) => setJudgeToken(e.target.value)}
-                  placeholder="Access Key from WeMakeDevs / README"
-                  className="w-full pl-4 pr-10 py-3 rounded-xl bg-surface-strong/40 border border-hairline-strong text-sm text-ink placeholder:text-muted-soft focus:outline-none focus:border-ink focus:ring-1 focus:ring-ink/20 transition-all duration-200"
-                  disabled={authorizingJudge}
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowJudgeToken(!showJudgeToken)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink cursor-pointer"
-                  disabled={authorizingJudge}
-                >
-                  {showJudgeToken ? (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M1 8s3-5.5 7-5.5 7 5.5 7 5.5-3 5.5-7 5.5S1 8 1 8z" stroke="currentColor" strokeWidth="1.2" />
-                      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-                      <line x1="2" y1="2" x2="14" y2="14" stroke="currentColor" strokeWidth="1.2" />
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M1 8s3-5.5 7-5.5 7 5.5 7 5.5-3 5.5-7 5.5S1 8 1 8z" stroke="currentColor" strokeWidth="1.2" />
-                      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-
-              <p className="text-[11px] text-muted-soft mt-2 leading-relaxed">
-                Entering a valid token unlocks full dashboard functionality running on our server-side API keys and billing.
-              </p>
-            </div>
-
-            <div className="flex justify-between items-center pt-4 border-t border-hairline-soft">
-              <button
-                type="button"
-                onClick={() => setFlowType("none")}
-                className="px-5 py-2.5 rounded-full border border-hairline text-ink text-[14px] font-semibold hover:bg-surface-strong/50 active:scale-[0.98] transition-all cursor-pointer"
-                disabled={authorizingJudge}
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={authorizingJudge || !judgeToken.trim()}
-                className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-[14px] font-semibold hover:bg-primary-active active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
-              >
-                {authorizingJudge ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-on-primary" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Verifying token…
-                  </>
-                ) : (
-                  "Authorize Session"
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Flow: Bring Your Own Key */}
-        {flowType === "byok" && (
+        {/* Step indicator */}
+        {step >= 1 && (
           <div className="flex items-center justify-center gap-2 mb-6 pb-2 border-b border-hairline-soft">
             <div className="flex items-center gap-1.5">
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
@@ -360,21 +185,11 @@ export default function AIConfigModal() {
           </div>
         )}
 
-        {/* Flow: Bring Your Own Key (Step 1: Provider selection) */}
-        {flowType === "byok" && step === 1 && (
+        {/* Step 1: Provider selection */}
+        {step === 1 && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-muted-soft uppercase tracking-wider block">Select LLM Provider</label>
-              <button
-                type="button"
-                onClick={() => setFlowType("none")}
-                className="text-xs text-primary hover:underline font-semibold"
-              >
-                Change Flow
-              </button>
-            </div>
+            <label className="text-xs font-semibold text-muted-soft uppercase tracking-wider block">Select LLM Provider</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Groq Card */}
               <button
                 onClick={() => handleProviderSelect("groq")}
                 className={`flex flex-col items-center justify-center p-5 rounded-2xl border text-center transition-all duration-200 hover:border-ink hover:bg-surface-strong/30 cursor-pointer group ${
@@ -388,7 +203,6 @@ export default function AIConfigModal() {
                 <span className="text-[10px] text-muted-soft mt-1">Llama 3, Mixtral</span>
               </button>
 
-              {/* OpenAI Card */}
               <button
                 onClick={() => handleProviderSelect("openai")}
                 className={`flex flex-col items-center justify-center p-5 rounded-2xl border text-center transition-all duration-200 hover:border-ink hover:bg-surface-strong/30 cursor-pointer group ${
@@ -402,7 +216,6 @@ export default function AIConfigModal() {
                 <span className="text-[10px] text-muted-soft mt-1">GPT-4o, GPT-4o-mini</span>
               </button>
 
-              {/* Gemini Card */}
               <button
                 onClick={() => handleProviderSelect("gemini")}
                 className={`flex flex-col items-center justify-center p-5 rounded-2xl border text-center transition-all duration-200 hover:border-ink hover:bg-surface-strong/30 cursor-pointer group ${
@@ -416,11 +229,10 @@ export default function AIConfigModal() {
                 <span className="text-[10px] text-muted-soft mt-1">1.5 Pro, 1.5 Flash</span>
               </button>
             </div>
-
             <div className="flex items-center justify-between pt-4 border-t border-hairline-soft">
               <button
                 type="button"
-                onClick={() => setFlowType("none")}
+                onClick={closeModal}
                 className="px-5 py-2.5 rounded-full border border-hairline text-ink text-[14px] font-semibold hover:bg-surface-strong/50 active:scale-[0.98] transition-all cursor-pointer"
               >
                 Cancel
@@ -429,8 +241,8 @@ export default function AIConfigModal() {
           </div>
         )}
 
-        {/* Flow: Bring Your Own Key (Step 2: API Key input) */}
-        {flowType === "byok" && step === 2 && (
+        {/* Step 2: API Key input */}
+        {step === 2 && (
           <div className="space-y-5">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -513,8 +325,8 @@ export default function AIConfigModal() {
           </div>
         )}
 
-        {/* Flow: Bring Your Own Key (Step 3: Select Model) */}
-        {flowType === "byok" && step === 3 && (
+        {/* Step 3: Select Model */}
+        {step === 3 && (
           <div className="space-y-5">
             <div>
               <div className="flex items-center justify-between mb-2">

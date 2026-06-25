@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -43,25 +43,18 @@ from services import (
 
 limiter = Limiter(key_func=get_remote_address)
 
-async def verify_llm_authorization(x_synapse_key: str = Header(None)):
-    user_config = db_get_user_ai_config()
-    if user_config and user_config.get("provider") and user_config.get("model"):
-        return  # BYOK is configured, bypass access key checks
-        
-    secret = os.environ.get("SYNAPSE_ACCESS_KEY")
-    judge_token = os.environ.get("JUDGE_ACCESS_TOKEN")
-    is_dev = os.environ.get("ENVIRONMENT", "production") == "development"
-    if not secret and not judge_token:
-        if is_dev:
-            return  # explicit, intentional local-dev bypass
-        raise HTTPException(status_code=500, detail="Server misconfigured: Access keys not configured")
-        
-    allowed_keys = {k for k in (secret, judge_token) if k}
-    if x_synapse_key not in allowed_keys:
-        raise HTTPException(
-            status_code=403, 
-            detail="A judge access token or your own API key is required to use AI features."
-        )
+# async def verify_llm_authorization(x_synapse_key: str = Header(None)):
+#     user_config = db_get_user_ai_config()
+#     if user_config and user_config.get("provider") and user_config.get("model"):
+#         return  # BYOK is configured, bypass access key checks
+#     secret = os.environ.get("SYNAPSE_ACCESS_KEY")
+#     is_dev = os.environ.get("ENVIRONMENT", "production") == "development"
+#     if not secret and not is_dev:
+#         raise HTTPException(status_code=500, detail="Server misconfigured: Access keys not configured")
+#     allowed_keys = {k for k in (secret,) if k}
+#     if x_synapse_key not in allowed_keys:
+#         raise HTTPException(status_code=403, detail="Access key required.")
+# Uncomment above and add Depends(verify_llm_authorization) to /ingest, /recall, /reconciliation/resolve to re-lock the app
 
 app = FastAPI(
     title="Synapse — Cognee Backend", 
@@ -98,24 +91,9 @@ async def health():
     return {"status": "ok", "service": "synapse-cognee"}
 
 
-class JudgeAuthRequest(BaseModel):
-    token: str
-
-
-@app.post("/ai/judge-auth")
-async def judge_auth_endpoint(req: JudgeAuthRequest):
-    secret = os.environ.get("SYNAPSE_ACCESS_KEY")
-    judge_token = os.environ.get("JUDGE_ACCESS_TOKEN")
-    
-    allowed_keys = {k for k in (secret, judge_token) if k}
-    if req.token not in allowed_keys:
-        raise HTTPException(status_code=403, detail="Invalid access token")
-    return {"status": "ok"}
-
-
 @app.post("/ingest")
 @limiter.limit("10/minute")
-async def ingest(request: Request, req: IngestRequest, _=Depends(verify_llm_authorization)):
+async def ingest(request: Request, req: IngestRequest):
     result = await ingest_source(req)
     return result
 
@@ -147,7 +125,7 @@ async def node_summarize(req: NodeSummarizeRequest):
 
 @app.post("/recall")
 @limiter.limit("20/minute")
-async def recall(request: Request, req: RecallRequest, _=Depends(verify_llm_authorization)):
+async def recall(request: Request, req: RecallRequest):
     return await answer_query(req)
 
 
@@ -162,7 +140,7 @@ async def reconciliation_events():
 
 
 @app.post("/reconciliation/resolve")
-async def reconciliation_resolve(req: ResolveRequest, _=Depends(verify_llm_authorization)):
+async def reconciliation_resolve(req: ResolveRequest):
     await resolve_conflict(req)
     return {"status": "ok"}
 

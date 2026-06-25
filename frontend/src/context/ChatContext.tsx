@@ -256,7 +256,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const isAuthError = msg.includes("401") || msg.includes("403") || msg.includes("required");
       
       const cleanMsg = isAuthError
-        ? "A judge access token or your own API key is required to use AI features."
+        ? "Access denied. Configure a personal API key in Settings to use AI features."
         : `Error: ${msg}. Make sure the backend is running.`;
 
       const errorMsg: ChatMessage = {

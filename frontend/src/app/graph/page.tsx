@@ -222,7 +222,7 @@ function GraphLoadingSkeleton() {
 
 export default function GraphPage() {
   const router = useRouter();
-  const { config, loading: loadingAI, openModal, isJudgeAuthorized } = useAIConfig();
+  const { config, loading: loadingAI, openModal } = useAIConfig();
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<NodeDetail | null>(null);
@@ -241,7 +241,7 @@ export default function GraphPage() {
     }
   }, []);
 
-  const isConnected = !!config?.configured || isJudgeAuthorized;
+  const isConnected = !!config?.configured;
   const showAIBanner = !loading && !loadingAI && !isConnected && !isBannerDismissed;
   const [error, setError] = useState<string | null>(null);
   const [conflictCount, setConflictCount] = useState(0);

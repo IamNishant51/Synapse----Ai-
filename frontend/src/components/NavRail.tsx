@@ -18,7 +18,7 @@ const navItems = [
 export default function NavRail() {
   const pathname = usePathname();
   const { jobStatus, progress } = useIngestion();
-  const { config, openModal, loading: loadingAI, isJudgeAuthorized } = useAIConfig();
+  const { config, openModal, loading: loadingAI } = useAIConfig();
   const [logoError, setLogoError] = useState(false);
 
   return (
@@ -86,7 +86,7 @@ export default function NavRail() {
 
         {/* AI Config Pill */}
         {!loadingAI && config && (
-          (config.configured || isJudgeAuthorized) ? (
+          (config.configured) ? (
             <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface-strong/60 border border-hairline-soft w-full">
               <div className="flex items-center gap-1.5 min-w-0">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />

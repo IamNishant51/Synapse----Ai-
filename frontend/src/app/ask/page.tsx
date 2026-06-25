@@ -285,13 +285,13 @@ export default function AskPage() {
     switchToConversation,
     deleteConversation,
   } = useChat();
-  const { openModal, config, isJudgeAuthorized, isModalOpen } = useAIConfig();
+  const { openModal, config, isModalOpen } = useAIConfig();
   
   const prevModalOpenRef = useRef(false);
 
   useEffect(() => {
     const prevModalOpen = prevModalOpenRef.current;
-    if (prevModalOpen && !isModalOpen && (config?.configured || isJudgeAuthorized)) {
+    if (prevModalOpen && !isModalOpen && config?.configured) {
       if (messages.length > 0) {
         const lastMsg = messages[messages.length - 1];
         if (lastMsg.isError && lastMsg.answer.includes("required")) {
@@ -301,7 +301,7 @@ export default function AskPage() {
       }
     }
     prevModalOpenRef.current = isModalOpen;
-  }, [isModalOpen, config, isJudgeAuthorized, messages, handleSubmit, setMessages]);
+  }, [isModalOpen, config, messages, handleSubmit, setMessages]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
