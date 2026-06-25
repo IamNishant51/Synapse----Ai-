@@ -254,15 +254,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (epoch !== epochRef.current) return;
       
       const msg = e instanceof Error ? e.message : "Failed to get answer";
+      const isAuthError = msg.includes("401") || msg.includes("403");
+      
+      const cleanMsg = isAuthError
+        ? "A judge access token or your own API key is required to use AI features."
+        : `Error: ${msg}. Make sure the backend is running.`;
+
       const errorMsg: ChatMessage = {
         id: Math.random().toString(36).slice(2),
         query: q,
         intent: null,
-        answer: `Error: ${msg}. Make sure the backend is running.`,
+        answer: cleanMsg,
         sources: [],
         diffCard: null,
         timeline: null,
         timestamp: new Date().toISOString(),
+        isError: true,
       };
       
       setMessages((prev) => {

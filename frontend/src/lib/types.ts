@@ -91,6 +91,7 @@ export interface ChatMessage {
   timeline: TimelinePoint[] | null;
   connectionMap?: ConnectionMap | null;
   timestamp: string;
+  isError?: boolean;
 }
 
 export interface DecaySettings {
