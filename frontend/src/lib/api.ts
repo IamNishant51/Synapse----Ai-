@@ -150,6 +150,13 @@ export async function searchNodes(query: string): Promise<{ id: string; label: s
   return fetchAPI(`/nodes/search?q=${encodeURIComponent(query)}`);
 }
 
+export async function summarizeNode(nodeId: string, label: string, sourceProvenance: string): Promise<{ summary: string }> {
+  return fetchAPI("/nodes/summarize", {
+    method: "POST",
+    body: JSON.stringify({ nodeId, label, sourceProvenance }),
+  });
+}
+
 export async function resetDemoData(): Promise<void> {
   await fetchAPI("/reset-demo", {
     method: "POST",

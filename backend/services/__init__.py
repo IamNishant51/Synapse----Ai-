@@ -1438,6 +1438,19 @@ async def get_sources() -> list[Source]:
     return db_get_sources()
 
 
+async def generate_node_summary(node_id: str, label: str, source: str) -> str:
+    if not HAS_LLM:
+        return ""
+    prompt = (
+        f"Generate a brief one-sentence summary for this knowledge graph node:\n\n"
+        f"Label: {label}\n"
+        f"Source: {source}\n\n"
+        f"Describe concisely what this node represents in the knowledge graph."
+    )
+    result = await call_llm(prompt, "You are a precise knowledge graph assistant.")
+    return result.strip().strip('"').strip("'")
+
+
 async def search_nodes(query: str) -> list[NodeSearchResult]:
     q = query.lower()
     results = []

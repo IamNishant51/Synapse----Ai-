@@ -33,6 +33,7 @@ from services import (
     update_decay_settings,
     get_sources,
     search_nodes,
+    generate_node_summary,
     forget_node,
     forget_source,
     reset_demo_data,
@@ -130,6 +131,18 @@ async def ingestion_job(job_id: str):
 @app.get("/graph-snapshot")
 async def graph_snapshot():
     return await get_graph_snapshot()
+
+
+class NodeSummarizeRequest(BaseModel):
+    nodeId: str
+    label: str
+    sourceProvenance: str
+
+
+@app.post("/nodes/summarize")
+async def node_summarize(req: NodeSummarizeRequest):
+    summary = await generate_node_summary(req.nodeId, req.label, req.sourceProvenance)
+    return {"summary": summary}
 
 
 @app.post("/recall")

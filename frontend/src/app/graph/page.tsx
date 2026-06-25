@@ -8,7 +8,7 @@ import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { getConfidenceColor, tokens } from "@/lib/design-tokens";
-import { getGraphSnapshot, forgetNode, getConflictEvents, resetDemoData } from "@/lib/api";
+import { getGraphSnapshot, forgetNode, getConflictEvents, resetDemoData, summarizeNode } from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { useAIConfig } from "@/context/AIConfigContext";
 import * as THREE from "three";
@@ -228,7 +228,9 @@ export default function GraphPage() {
   const [selectedNode, setSelectedNode] = useState<NodeDetail | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [summarizing, setSummarizing] = useState(false);
   const [isBannerDismissed, setIsBannerDismissed] = useState(true);
+  const summaryCacheRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -367,10 +369,14 @@ export default function GraphPage() {
   };
 
   const handleNodeClick = useCallback((node: any) => {
+    const rawSummary = node.summary || "";
+    const needsAiSummary = rawSummary.startsWith("File path:") || rawSummary.startsWith("Source:");
+    const cached = needsAiSummary ? summaryCacheRef.current.get(node.id) : null;
+
     setSelectedNode({
       id: node.id,
       label: node.label,
-      summary: node.summary || "",
+      summary: cached || rawSummary,
       confidenceScore: node.confidenceScore ?? 0.5,
       sourceProvenance: node.sourceProvenance || "",
       lastReinforcedAt: node.lastReinforcedAt || "",
@@ -379,6 +385,19 @@ export default function GraphPage() {
       isDecisionType: node.isDecisionType || false,
     });
     lastSelectedNodeRef.current = { id: node.id, time: performance.now() };
+
+    if (needsAiSummary && !cached) {
+      setSummarizing(true);
+      summarizeNode(node.id, node.label || "", node.sourceProvenance || "")
+        .then((res) => {
+          summaryCacheRef.current.set(node.id, res.summary);
+          setSelectedNode((prev) => prev && prev.id === node.id ? { ...prev, summary: res.summary } : prev);
+        })
+        .catch(() => {
+          setSelectedNode((prev) => prev && prev.id === node.id ? { ...prev, summary: rawSummary } : prev);
+        })
+        .finally(() => setSummarizing(false));
+    }
     if (use2d && fg2dRef.current) {
       fg2dRef.current.centerAt(node.x, node.y, 800);
     } else if (!use2d && fg3dRef.current) {
@@ -859,12 +878,16 @@ export default function GraphPage() {
                 </div>
               </div>
 
-              {selectedNode.summary && (
+              {(selectedNode.summary && !selectedNode.summary.startsWith("File path:") && !selectedNode.summary.startsWith("Source:")) || summarizing ? (
                 <div>
                   <span className="caption-upper text-muted" style={{ fontSize: "10px" }}>Summary</span>
-                  <p className="mt-1.5 text-[14px] text-body leading-relaxed">{selectedNode.summary}</p>
+                  {summarizing ? (
+                    <p className="mt-1.5 text-[14px] text-body leading-relaxed text-muted-soft italic">Generating summary...</p>
+                  ) : (
+                    <p className="mt-1.5 text-[14px] text-body leading-relaxed">{selectedNode.summary}</p>
+                  )}
                 </div>
-              )}
+              ) : null}
 
               {selectedNode.sourceProvenance && (
                 <div>
