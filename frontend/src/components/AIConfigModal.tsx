@@ -5,6 +5,36 @@ import { useAIConfig } from "@/context/AIConfigContext";
 import { getAIModels, saveAIConfig } from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 
+function getCleanErrorMessage(err: unknown): string {
+  if (!err) return "An unknown error occurred";
+  const error = err as Error;
+  const msg = error.message || "";
+  
+  if (msg.startsWith("API ")) {
+    try {
+      const jsonPart = msg.substring(msg.indexOf("{"));
+      const parsed = JSON.parse(jsonPart);
+      if (parsed.detail) {
+        const detail = parsed.detail;
+        if (detail.includes("error") && detail.includes("message")) {
+          try {
+            const startIdx = detail.indexOf("{");
+            if (startIdx !== -1) {
+              const nestedJson = detail.substring(startIdx);
+              const nestedParsed = JSON.parse(nestedJson);
+              if (nestedParsed.error?.message) {
+                return nestedParsed.error.message;
+              }
+            }
+          } catch {}
+        }
+        return detail;
+      }
+    } catch {}
+  }
+  return msg || "An error occurred";
+}
+
 export default function AIConfigModal() {
   const { isModalOpen, closeModal, refreshConfig, config, saveJudgeToken, isJudgeAuthorized } = useAIConfig();
   const { addToast } = useToast();
@@ -98,8 +128,7 @@ export default function AIConfigModal() {
       }
     } catch (err: unknown) {
       console.error(err);
-      const error = err as Error;
-      setErrorMsg(error.message || "Failed to fetch models. Please check if your API key is correct.");
+      setErrorMsg(getCleanErrorMessage(err));
     } finally {
       setLoadingModels(false);
     }
@@ -120,8 +149,7 @@ export default function AIConfigModal() {
       addToast(`Successfully configured ${provider} with model ${selectedModel}`, "success");
       closeModal();
     } catch (err: unknown) {
-      const error = err as Error;
-      setErrorMsg(error.message || "Failed to save AI configuration");
+      setErrorMsg(getCleanErrorMessage(err));
     } finally {
       setSaving(false);
     }
