@@ -1,6 +1,10 @@
 import os
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from models import (
     IngestRequest,
     RecallRequest,
@@ -28,9 +32,18 @@ from services import (
     get_cognee_activities,
 )
 
-async def verify_access_key(x_synapse_key: str = Header(None)):
+limiter = Limiter(key_func=get_remote_address)
+
+async def verify_access_key(request: Request, x_synapse_key: str = Header(None)):
+    if request.url.path == "/health":
+        return
     secret = os.environ.get("SYNAPSE_ACCESS_KEY")
-    if secret and x_synapse_key != secret:
+    is_dev = os.environ.get("ENVIRONMENT", "production") == "development"
+    if not secret:
+        if is_dev:
+            return  # explicit, intentional local-dev bypass
+        raise HTTPException(status_code=500, detail="Server misconfigured: SYNAPSE_ACCESS_KEY not set")
+    if x_synapse_key != secret:
         raise HTTPException(status_code=403, detail="Invalid or missing X-Synapse-Key header")
 
 app = FastAPI(
@@ -38,6 +51,8 @@ app = FastAPI(
     version="0.1.0",
     dependencies=[Depends(verify_access_key)]
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,7 +69,8 @@ async def health():
 
 
 @app.post("/ingest")
-async def ingest(req: IngestRequest):
+@limiter.limit("10/minute")
+async def ingest(request: Request, req: IngestRequest):
     result = await ingest_source(req)
     return result
 
@@ -73,7 +89,8 @@ async def graph_snapshot():
 
 
 @app.post("/recall")
-async def recall(req: RecallRequest):
+@limiter.limit("20/minute")
+async def recall(request: Request, req: RecallRequest):
     return await answer_query(req)
 
 

@@ -1,11 +1,11 @@
 from typing import Optional, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 
 class IngestRequest(BaseModel):
     type: Literal["pdf", "github", "conversation", "article", "youtube"]
-    content: str
+    content: str = Field(..., max_length=500_000)
     label: str
     url: Optional[str] = None
     pathFilter: Optional[str] = None
@@ -50,7 +50,7 @@ class GraphSnapshot(BaseModel):
 
 
 class RecallRequest(BaseModel):
-    query: str
+    query: str = Field(..., max_length=2_000)
 
 
 class SourcePill(BaseModel):

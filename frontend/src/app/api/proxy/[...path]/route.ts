@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 async function handleProxy(request: NextRequest, pathArray: string[]) {
-  const backendUrl = process.env.NEXT_PUBLIC_COGNEE_API_URL || "http://localhost:8000";
+  const backendUrl = process.env.COGNEE_API_URL || process.env.NEXT_PUBLIC_COGNEE_API_URL || "http://localhost:8000";
   const path = pathArray.join("/");
   const url = new URL(`${backendUrl}/${path}`);
   url.search = request.nextUrl.search;
@@ -30,7 +30,8 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
         "Content-Type": res.headers.get("Content-Type") || "application/json",
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("Proxy error details:", error);
     return NextResponse.json({ error: "Proxy error" }, { status: 500 });
   }
 }

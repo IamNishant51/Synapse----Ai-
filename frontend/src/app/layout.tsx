@@ -15,6 +15,7 @@ const garamond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://synapse-knowledge.vercel.app"),
   title: "Synapse — A memory that knows when to update itself",
   description: "A self-organizing personal knowledge graph that ingests everything you read, write, and build — and actively maintains itself.",
   manifest: "/site.webmanifest",
@@ -25,6 +26,27 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
     shortcut: "/favicon.ico",
+  },
+  openGraph: {
+    title: "Synapse — A memory that knows when to update itself",
+    description: "A self-organizing personal knowledge graph built on Cognee's memory lifecycle.",
+    url: "https://synapse-knowledge.vercel.app",
+    siteName: "Synapse",
+    images: [
+      {
+        url: "/images/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Synapse Metadata Graph and memory visualization",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Synapse — A memory that knows when to update itself",
+    description: "A self-organizing personal knowledge graph built on Cognee's memory lifecycle.",
+    images: ["/images/og-image.png"],
   },
 };
 

@@ -399,6 +399,20 @@ export default function LandingPage() {
 
   return (
     <div ref={wrapRef} className="bg-[#f5f5f5] text-[#0c0a09] relative min-h-screen selection:bg-[#a8c8e8]/40 overflow-x-clip font-sans">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "Synapse",
+            "applicationCategory": "ProductivityApplication",
+            "operatingSystem": "Web",
+            "description": "A self-organizing personal knowledge graph built on Cognee's memory lifecycle.",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          }),
+        }}
+      />
       
       {/* ═══════ TOP FLOATING NAVIGATION ═══════ */}
       <nav className={`fixed top-0 left-0 right-0 z-50 h-16 transition-all duration-300 ${
@@ -921,7 +935,7 @@ export default function LandingPage() {
           {/* Right Column: Memory Decay Illustration */}
           <div className="md:col-span-6 flex justify-center items-center relative h-[260px] sm:h-[320px] md:h-[380px] bg-white border border-[#e7e5e4] rounded-3xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.02)] select-none">
             <Image
-              src="/images/memory-decay.png"
+              src="/images/memory-decay.webp"
               alt="Memory Decay Illustration"
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
@@ -983,11 +997,11 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Card 1: 5 source types (bg-image: capabilities-sphere.png) */}
+            {/* Card 1: 5 source types (bg-image: capabilities-sphere.webp) */}
             <div 
               className="p-8 rounded-3xl border border-[#e7e5e4]/50 flex flex-col justify-end min-h-[300px] md:col-span-2 relative overflow-hidden group shadow-[0_4px_16px_rgba(0,0,0,0.02)]"
               style={{ 
-                backgroundImage: "url('/images/capabilities-sphere.png')",
+                backgroundImage: "url('/images/capabilities-sphere.webp')",
                 backgroundSize: "cover",
                 backgroundPosition: "center"
               }}
