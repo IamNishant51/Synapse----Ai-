@@ -12,8 +12,9 @@ import CogneeConsole from "./CogneeConsole";
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLanding = pathname === "/";
+  const isLogin = pathname === "/login";
 
-  if (isLanding) {
+  if (isLanding || isLogin) {
     return (
       <IngestionProvider>
         <ToastProvider>
