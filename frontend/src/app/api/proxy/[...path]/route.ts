@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 async function handleProxy(request: NextRequest, pathArray: string[]) {
-  const backendUrl = process.env.COGNEE_API_URL || process.env.NEXT_PUBLIC_COGNEE_API_URL || "http://localhost:8000";
+  let backendUrl = process.env.COGNEE_API_URL || process.env.NEXT_PUBLIC_COGNEE_API_URL;
+  if (!backendUrl && process.env.VERCEL_URL) {
+    backendUrl = `https://${process.env.VERCEL_URL}/backend`;
+  }
+  if (!backendUrl) {
+    backendUrl = "http://localhost:8000";
+  }
   const path = pathArray.join("/");
   const url = new URL(`${backendUrl}/${path}`);
   url.search = request.nextUrl.search;

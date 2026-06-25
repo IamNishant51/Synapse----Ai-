@@ -103,7 +103,7 @@ Self-hosting users can connect their own accounts/keys for Groq, OpenAI, or Gemi
 
 - **Authentication Model**: The security implementation relies on a Tier 1 shared-secret gateway rather than a full multi-tenant user authentication system, which is optimized for local testing and submission reviews.
 - **Chat History Persistence**: The chat conversation history in `/ask` is currently persisted in the browser's local storage (`localStorage`) rather than being stored on the server side.
-- **Database Scope**: The backend metadata is stored in a local SQLite database file, and the Cognee dataset configuration is configured for a single-user demo environment rather than multi-tenant enterprise scale.
+- **Database Scope**: The database configuration supports both a local SQLite file (default for local development) and a managed PostgreSQL instance with PGVector for remote Vercel/production deployment.
 - **Cognee Per-Request LLM Isolation (Upstream Issue #2228)**: LLM configuration for Cognee's own internal pipeline (`remember`/`recall`/`improve`/`forget`) is applied per-request but relies on Cognee's global process-wide config state. This is fully safe under this project's single-session usage pattern, but would require request-scoped isolation (or waiting on Cognee's roadmap for issue #2228) before being run under highly concurrent multi-tenant loads.
 - **Judge Key Separation**: The judge access token (see "For Judges — Quick Access" above) is checked only on the three endpoints that spend the server's own LLM budget (`/ingest`, `/recall`, `/reconciliation/resolve`) — every other page and feature is open by default, with no login wall. Entering a personal BYOK key always takes priority over the judge token for that session, so the two paths never conflict with each other.
 - **Public Access Token**: The judge token above is intentionally published in this README for frictionless review access, rather than sent privately — treat it as disposable; it will be rotated or disabled once judging concludes.
@@ -112,7 +112,7 @@ Self-hosting users can connect their own accounts/keys for Groq, OpenAI, or Gemi
 
 ## 7. Technical Stack
 - **Frontend**: Next.js 16 (App Router), Tailwind CSS, TypeScript, `react-force-graph-3d` for the node network.
-- **Backend**: FastAPI (Python), SQLite metadata database ([database.py](https://github.com/IamNishant51/Synapse----Ai-/blob/main/backend/database.py)), Cognee SDK, Gemini / Groq API wrappers.
+- **Backend**: FastAPI (Python), SQLite/PostgreSQL metadata database ([database.py](https://github.com/IamNishant51/Synapse----Ai-/blob/main/backend/database.py)), Cognee SDK, Gemini / Groq API wrappers.
 
 ---
 

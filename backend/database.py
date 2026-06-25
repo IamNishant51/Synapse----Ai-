@@ -12,12 +12,97 @@ from models import (
     DecaySettings,
 )
 
+# Wrapper classes to make SQLite and PostgreSQL connections and cursors behave identically.
+class DBRow:
+    def __init__(self, data):
+        self._data = data
+        if isinstance(data, dict):
+            self._is_dict = True
+            self._keys = list(data.keys())
+            self._values = list(data.values())
+        elif hasattr(data, "keys"): # sqlite3.Row
+            self._is_dict = True
+            self._keys = list(data.keys())
+            self._values = [data[k] for k in self._keys]
+        else:
+            self._is_dict = False
+            self._values = list(data)
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._values[key]
+        elif self._is_dict:
+            if key in self._keys:
+                return self._data[key]
+            # Try case-insensitive lookup
+            for k in self._keys:
+                if k.lower() == key.lower():
+                    return self._data[k]
+            raise KeyError(key)
+        else:
+            raise KeyError(key)
+
+    def keys(self):
+        if self._is_dict:
+            return self._keys
+        return []
+
+class DBCursorWrapper:
+    def __init__(self, cursor, is_postgres):
+        self.cursor = cursor
+        self.is_postgres = is_postgres
+
+    def execute(self, sql, parameters=None):
+        if self.is_postgres:
+            # Replace SQLite placeholders ? with %s
+            sql = sql.replace("?", "%s")
+        if parameters is not None:
+            self.cursor.execute(sql, parameters)
+        else:
+            self.cursor.execute(sql)
+        return self
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        if row is None:
+            return None
+        return DBRow(row)
+
+    def fetchall(self):
+        rows = self.cursor.fetchall()
+        return [DBRow(r) for r in rows]
+
+class DBConnectionWrapper:
+    def __init__(self, conn, is_postgres):
+        self.conn = conn
+        self.is_postgres = is_postgres
+
+    def cursor(self):
+        if self.is_postgres:
+            from psycopg2.extras import RealDictCursor
+            return DBCursorWrapper(self.conn.cursor(cursor_factory=RealDictCursor), is_postgres=True)
+        else:
+            return DBCursorWrapper(self.conn.cursor(), is_postgres=False)
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
 DB_PATH = os.path.join(os.path.dirname(__file__), "synapse_meta.db")
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    postgres_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+    if postgres_url:
+        import psycopg2
+        conn = psycopg2.connect(postgres_url)
+        return DBConnectionWrapper(conn, is_postgres=True)
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return DBConnectionWrapper(conn, is_postgres=False)
+
 
 def db_init():
     conn = get_db_connection()
@@ -40,7 +125,7 @@ def db_init():
     # Ensure content column exists on previously-created tables
     try:
         cursor.execute("ALTER TABLE sources ADD COLUMN content TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
+    except Exception:
         pass
     
     # 2. Conflicts table (reconciliation_log/Inbox queue)
@@ -259,7 +344,7 @@ def db_get_sources() -> List[Source]:
         from datetime import datetime, timezone, timedelta
         cutoff = (datetime.now(timezone.utc) - timedelta(seconds=120)).isoformat()
         cursor.execute("UPDATE sources SET status='ready' WHERE status='processing' AND ingested_at < ?", (cutoff,))
-    except sqlite3.Error:
+    except Exception:
         pass
 
     cursor.execute("SELECT * FROM sources ORDER BY ingested_at DESC")

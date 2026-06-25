@@ -78,6 +78,20 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def startup_event():
+    import cognee
+    from services import COGNEE_READY
+    if COGNEE_READY:
+        try:
+            print("[Cognee] Running startup migrations...", flush=True)
+            await cognee.run_migrations()
+            print("[Cognee] Startup migrations completed successfully.", flush=True)
+        except Exception as e:
+            print(f"[Cognee] Startup migrations failed: {e}", flush=True)
+
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "synapse-cognee"}

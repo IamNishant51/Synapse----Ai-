@@ -110,9 +110,59 @@ try:
         cognee.config.set_llm_api_key(GROQ_API_KEY)
         cognee.config.set_llm_endpoint("https://api.groq.com/openai/v1")
         print(f"[Cognee] Initialized with provider=groq (via openai client), model={GROQ_MODEL}", flush=True)
+
+    # Set Relational, Vector and Graph storage configurations if environment variables are set
+    relational_provider = os.environ.get("RELATIONAL_DB_PROVIDER")
+    if relational_provider:
+        db_config = {
+            "db_provider": relational_provider,
+            "db_host": os.environ.get("RELATIONAL_DB_HOST", ""),
+            "db_port": int(os.environ.get("RELATIONAL_DB_PORT", 5432)) if os.environ.get("RELATIONAL_DB_PORT") else None,
+            "db_name": os.environ.get("RELATIONAL_DB_NAME", ""),
+            "db_username": os.environ.get("RELATIONAL_DB_USERNAME", ""),
+            "db_password": os.environ.get("RELATIONAL_DB_PASSWORD", ""),
+        }
+        db_config = {k: v for k, v in db_config.items() if v is not None}
+        cognee.config.set_relational_db_config(db_config)
+        print(f"[Cognee] Configured relational database with provider={relational_provider}", flush=True)
+
+    vector_provider = os.environ.get("VECTOR_DB_PROVIDER")
+    if vector_provider:
+        vector_config = {
+            "vector_db_provider": vector_provider,
+            "vector_db_host": os.environ.get("VECTOR_DB_HOST", ""),
+            "vector_db_port": int(os.environ.get("VECTOR_DB_PORT", 5432)) if os.environ.get("VECTOR_DB_PORT") else None,
+            "vector_db_name": os.environ.get("VECTOR_DB_NAME", ""),
+            "vector_db_username": os.environ.get("VECTOR_DB_USERNAME", ""),
+            "vector_db_password": os.environ.get("VECTOR_DB_PASSWORD", ""),
+            "vector_db_url": os.environ.get("VECTOR_DB_URL", ""),
+            "vector_db_key": os.environ.get("VECTOR_DB_KEY", ""),
+        }
+        vector_config = {k: v for k, v in vector_config.items() if v is not None}
+        cognee.config.set_vector_db_provider(vector_provider)
+        cognee.config.set_vector_db_config(vector_config)
+        print(f"[Cognee] Configured vector database with provider={vector_provider}", flush=True)
+
+    graph_provider = os.environ.get("GRAPH_DATABASE_PROVIDER")
+    if graph_provider:
+        graph_config = {
+            "graph_database_provider": graph_provider,
+            "graph_database_host": os.environ.get("GRAPH_DATABASE_HOST", ""),
+            "graph_database_port": int(os.environ.get("GRAPH_DATABASE_PORT", 5432)) if os.environ.get("GRAPH_DATABASE_PORT") else None,
+            "graph_database_name": os.environ.get("GRAPH_DATABASE_NAME", ""),
+            "graph_database_username": os.environ.get("GRAPH_DATABASE_username", ""),
+            "graph_database_password": os.environ.get("GRAPH_DATABASE_password", ""),
+            "graph_database_url": os.environ.get("GRAPH_DATABASE_URL", ""),
+        }
+        graph_config = {k: v for k, v in graph_config.items() if v is not None}
+        cognee.config.set_graph_database_provider(graph_provider)
+        cognee.config.set_graph_db_config(graph_config)
+        print(f"[Cognee] Configured graph database with provider={graph_provider}", flush=True)
+
     COGNEE_READY = True
 except Exception as e:
     print(f"[Cognee] Init failed: {e}", flush=True)
+
 
 def apply_cognee_llm_config():
     if not COGNEE_READY:
