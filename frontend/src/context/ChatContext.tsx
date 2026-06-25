@@ -191,64 +191,63 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    try {
-      const response = await answerQuery(q, controller.signal);
-      if (epoch !== epochRef.current) return;
-
-      setMessages((prev) => {
-        const next = [...prev, response];
+    // Helper to persist conversation and update states purely without react state-updater side-effects
+    const handleSaveConversation = (response: ChatMessage) => {
+      const next = [...messages, response];
+      let currentId = activeConvId;
+      const index = getConvIndex();
+      
+      if (!currentId) {
+        // Generate new conversation ID
+        currentId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        setActiveConvId(currentId);
+        localStorage.setItem(ACTIVE_CONV_KEY, currentId);
         
-        let currentId = activeConvId;
-        const index = getConvIndex();
+        const newMeta: ConversationMeta = {
+          id: currentId,
+          title: generateTitle(next),
+          updatedAt: new Date().toISOString(),
+          messageCount: next.length,
+        };
+        const updatedIndex = [newMeta, ...index];
+        persistConvIndex(updatedIndex);
+        setConvIndex(updatedIndex);
+      } else {
+        // Update existing conversation in index
+        const existingIndex = index.findIndex(c => c.id === currentId);
+        let updatedIndex = [...index];
         
-        if (!currentId) {
-          // Generate new conversation ID
-          currentId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-          setActiveConvId(currentId);
-          localStorage.setItem(ACTIVE_CONV_KEY, currentId);
-          
+        if (existingIndex !== -1) {
+          const updatedMeta = {
+            ...updatedIndex[existingIndex],
+            updatedAt: new Date().toISOString(),
+            messageCount: next.length,
+            title: updatedIndex[existingIndex].title === "Empty conversation" ? generateTitle(next) : updatedIndex[existingIndex].title
+          };
+          updatedIndex.splice(existingIndex, 1);
+          updatedIndex = [updatedMeta, ...updatedIndex];
+        } else {
+          // If somehow not in index but has active id
           const newMeta: ConversationMeta = {
             id: currentId,
             title: generateTitle(next),
             updatedAt: new Date().toISOString(),
             messageCount: next.length,
           };
-          const updatedIndex = [newMeta, ...index];
-          persistConvIndex(updatedIndex);
-          setConvIndex(updatedIndex);
-        } else {
-          // Update existing conversation in index
-          const existingIndex = index.findIndex(c => c.id === currentId);
-          let updatedIndex = [...index];
-          
-          if (existingIndex !== -1) {
-            const updatedMeta = {
-              ...updatedIndex[existingIndex],
-              updatedAt: new Date().toISOString(),
-              messageCount: next.length,
-              // Update title if it was empty/default
-              title: updatedIndex[existingIndex].title === "Empty conversation" ? generateTitle(next) : updatedIndex[existingIndex].title
-            };
-            // Move to top
-            updatedIndex.splice(existingIndex, 1);
-            updatedIndex = [updatedMeta, ...updatedIndex];
-          } else {
-            // If somehow not in index but has active id
-            const newMeta: ConversationMeta = {
-              id: currentId,
-              title: generateTitle(next),
-              updatedAt: new Date().toISOString(),
-              messageCount: next.length,
-            };
-            updatedIndex = [newMeta, ...updatedIndex];
-          }
-          persistConvIndex(updatedIndex);
-          setConvIndex(updatedIndex);
+          updatedIndex = [newMeta, ...updatedIndex];
         }
-        
-        saveConvMessages(currentId, next);
-        return next;
-      });
+        persistConvIndex(updatedIndex);
+        setConvIndex(updatedIndex);
+      }
+      
+      saveConvMessages(currentId, next);
+      setMessages(next);
+    };
+
+    try {
+      const response = await answerQuery(q, controller.signal);
+      if (epoch !== epochRef.current) return;
+      handleSaveConversation(response);
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       if (epoch !== epochRef.current) return;
@@ -271,53 +270,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         timestamp: new Date().toISOString(),
         isError: true,
       };
-      
-      setMessages((prev) => {
-        const next = [...prev, errorMsg];
-        let currentId = activeConvId;
-        const index = getConvIndex();
 
-        if (!currentId) {
-          currentId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-          setActiveConvId(currentId);
-          localStorage.setItem(ACTIVE_CONV_KEY, currentId);
-          
-          const newMeta: ConversationMeta = {
-            id: currentId,
-            title: generateTitle(next),
-            updatedAt: new Date().toISOString(),
-            messageCount: next.length,
-          };
-          const updatedIndex = [newMeta, ...index];
-          persistConvIndex(updatedIndex);
-          setConvIndex(updatedIndex);
-        } else {
-          const existingIndex = index.findIndex(c => c.id === currentId);
-          let updatedIndex = [...index];
-          if (existingIndex !== -1) {
-            const updatedMeta = {
-              ...updatedIndex[existingIndex],
-              updatedAt: new Date().toISOString(),
-              messageCount: next.length,
-            };
-            updatedIndex.splice(existingIndex, 1);
-            updatedIndex = [updatedMeta, ...updatedIndex];
-          } else {
-            const newMeta: ConversationMeta = {
-              id: currentId,
-              title: generateTitle(next),
-              updatedAt: new Date().toISOString(),
-              messageCount: next.length,
-            };
-            updatedIndex = [newMeta, ...updatedIndex];
-          }
-          persistConvIndex(updatedIndex);
-          setConvIndex(updatedIndex);
-        }
-        
-        saveConvMessages(currentId, next);
-        return next;
-      });
+      handleSaveConversation(errorMsg);
     } finally {
       if (epoch === epochRef.current) {
         setIsProcessing(false);
