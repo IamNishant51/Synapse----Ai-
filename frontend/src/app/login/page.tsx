@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
@@ -9,6 +9,19 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/api/auth/status");
+        const data = await res.json();
+        if (data.authenticated) {
+          router.push("/graph");
+        }
+      } catch {}
+    };
+    checkAuth();
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +65,9 @@ export default function LoginPage() {
             priority
             className="object-contain mb-1"
           />
-          <h1 className="sr-only">Synapse</h1>
-          <p className="mt-1 text-sm text-muted" style={{ letterSpacing: "0.15px" }}>Enter your access key to continue</p>
+          <p className="mt-1 text-sm text-muted text-center" style={{ letterSpacing: "0.15px" }}>
+            This demo is access-gated during judging. Enter the key shared with you.
+          </p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -79,6 +93,15 @@ export default function LoginPage() {
             {loading ? "Authenticating…" : "Unlock"}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <a
+            href="mailto:anonymouslucifer400@gmail.com?subject=Synapse%20Access%20Key%20Request"
+            className="text-xs text-muted hover:text-ink hover:underline transition-colors"
+          >
+            Don&apos;t have a key? Request access
+          </a>
+        </div>
       </div>
     </div>
   );

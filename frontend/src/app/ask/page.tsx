@@ -9,9 +9,9 @@ import { getAskTopics } from "@/lib/api";
 import type { DiffCard, TimelinePoint, ConnectionMap } from "@/lib/types";
 
 const fallbackPromptChips = [
-  "What changed about my tracked topics?",
-  "What decisions have I made recently?",
-  "What does Synapse know about my current sources?",
+  "What changed about Canvas Theme?",
+  "What did I believe about Canvas Theme before vs now?",
+  "What decisions have I made about Backend Security?",
 ];
 
 function buildPromptChips(trackedTopics: string[], timelineTopics: string[]) {

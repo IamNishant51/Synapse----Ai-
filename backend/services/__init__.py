@@ -45,6 +45,7 @@ load_dotenv()
 
 from database import (
     db_init,
+    db_reseed,
     db_save_source,
     db_get_sources,
     db_delete_source,
@@ -1310,3 +1311,7 @@ async def forget_source(source_id: str) -> None:
                 await cognee.forget(dataset=COGNEE_DATASET, data_id=target_source.label)
             except Exception:
                 pass
+
+
+async def reset_demo_data() -> None:
+    db_reseed()

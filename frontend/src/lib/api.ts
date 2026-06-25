@@ -112,3 +112,9 @@ export async function getSources(): Promise<Source[]> {
 export async function searchNodes(query: string): Promise<{ id: string; label: string; confidence: number; status: string }[]> {
   return fetchAPI(`/nodes/search?q=${encodeURIComponent(query)}`);
 }
+
+export async function resetDemoData(): Promise<void> {
+  await fetchAPI("/reset-demo", {
+    method: "POST",
+  });
+}

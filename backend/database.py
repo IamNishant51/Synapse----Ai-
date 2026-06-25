@@ -415,3 +415,16 @@ def db_update_decay_settings(s: DecaySettings):
     """, (s.decayStartDays, s.forgetThresholdDays))
     conn.commit()
     conn.close()
+
+def db_reseed():
+    """Unconditionally clear database tables and re-run seed scripts."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM db_metadata WHERE key='seeded'")
+    cursor.execute("DELETE FROM sources")
+    cursor.execute("DELETE FROM conflicts")
+    cursor.execute("DELETE FROM reconciliation_log")
+    cursor.execute("DELETE FROM confidence_history")
+    conn.commit()
+    conn.close()
+    db_init()

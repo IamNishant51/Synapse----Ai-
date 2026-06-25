@@ -24,6 +24,7 @@ from services import (
     search_nodes,
     forget_node,
     forget_source,
+    reset_demo_data,
 )
 
 async def verify_access_key(x_synapse_key: str = Header(None)):
@@ -126,4 +127,10 @@ async def forget_node_endpoint(req: ForgetNodeRequest):
 @app.post("/forget/source")
 async def forget_source_endpoint(req: ForgetSourceRequest):
     await forget_source(req.sourceId)
+    return {"status": "ok"}
+
+
+@app.post("/reset-demo")
+async def reset_demo_endpoint():
+    await reset_demo_data()
     return {"status": "ok"}

@@ -2,12 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import { getConfidenceColor, tokens } from "@/lib/design-tokens";
-import { getGraphSnapshot, forgetNode, getConflictEvents } from "@/lib/api";
+import { getGraphSnapshot, forgetNode, getConflictEvents, resetDemoData } from "@/lib/api";
+import { useToast } from "@/context/ToastContext";
 import * as THREE from "three";
 import type { GraphNode, GraphEdge } from "@/lib/types";
 
@@ -218,6 +220,7 @@ function GraphLoadingSkeleton() {
 }
 
 export default function GraphPage() {
+  const router = useRouter();
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<NodeDetail | null>(null);
@@ -275,25 +278,43 @@ export default function GraphPage() {
     return () => observer.disconnect();
   }, []);
 
+  const { addToast } = useToast();
+
+  const fetchGraphData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [data, events] = await Promise.all([
+        getGraphSnapshot(),
+        getConflictEvents(),
+      ]);
+      setNodes(data.nodes);
+      setEdges(data.edges);
+      setConflictCount(events.filter((e) => e.status === "pending").length);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load graph");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     glowTexRef.current = createGlowTexture();
-    const load = async () => {
-      try {
-        const [data, events] = await Promise.all([
-          getGraphSnapshot(),
-          getConflictEvents(),
-        ]);
-        setNodes(data.nodes);
-        setEdges(data.edges);
-        setConflictCount(events.filter((e) => e.status === "pending").length);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load graph");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+    fetchGraphData();
+  }, [fetchGraphData]);
+
+  const handleLoadDemoData = async () => {
+    setLoading(true);
+    try {
+      await resetDemoData();
+      await fetchGraphData();
+      addToast("Demo dataset loaded successfully", "success");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load demo data");
+      setLoading(false);
+      addToast("Failed to load demo dataset", "error");
+    }
+  };
 
   const handleNodeClick = useCallback((node: any) => {
     setSelectedNode({
@@ -547,11 +568,27 @@ export default function GraphPage() {
 
         {empty && (
           <div className="absolute inset-0 flex items-center justify-center z-10 bg-canvas">
-            <EmptyState
-              icon="graph"
-              title="Your graph is empty"
-              description="Ingest a GitHub repo, paste a conversation, or upload a PDF to start building your knowledge graph."
-            />
+            <div className="flex flex-col items-center">
+              <EmptyState
+                icon="graph"
+                title="Your graph is empty"
+                description="Ingest a GitHub repo, paste a conversation, or upload a PDF to start building your knowledge graph."
+              />
+              <div className="mt-4 flex flex-wrap gap-4 justify-center relative z-20">
+                <button
+                  onClick={() => router.push("/ingest")}
+                  className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-[14px] font-semibold hover:bg-primary-active active:scale-[0.98] transition-all duration-150 cursor-pointer shadow-sm"
+                >
+                  Add your first memory
+                </button>
+                <button
+                  onClick={handleLoadDemoData}
+                  className="px-5 py-2.5 rounded-full bg-surface-strong border border-hairline-strong text-ink text-[14px] font-semibold hover:bg-surface-card-active active:scale-[0.98] transition-all duration-150 cursor-pointer shadow-sm"
+                >
+                  Load demo data
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

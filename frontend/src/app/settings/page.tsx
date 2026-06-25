@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getDecaySettings, updateDecaySettings, runDecayCheck, getSources, searchNodes, forgetSource, forgetNode } from "@/lib/api";
 import type { Source } from "@/lib/types";
 import { useIngestion } from "@/context/IngestionContext";
+import { useToast } from "@/context/ToastContext";
 
 function formatDate(iso: string) {
   try {
@@ -17,8 +18,15 @@ function formatDate(iso: string) {
 }
 
 export default function SettingsPage() {
+  const { addToast } = useToast();
   const { jobStatus, progress } = useIngestion();
   const [decayStart, setDecayStart] = useState(60);
+  
+  const decayTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dragStartDecayRef = useRef<number | null>(null);
+
+  const forgetTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dragStartForgetRef = useRef<number | null>(null);
   const [forgetThreshold, setForgetThreshold] = useState(180);
   const [searchQuery, setSearchQuery] = useState("");
   const [decayRunning, setDecayRunning] = useState(false);
@@ -27,24 +35,6 @@ export default function SettingsPage() {
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
   const [decayResult, setDecayResult] = useState<{ forgotten: number; decayed: number } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [gitHubConnected, setGitHubConnected] = useState(false);
-
-  useEffect(() => {
-    const isConnected = localStorage.getItem("github_connected") === "true";
-    Promise.resolve().then(() => {
-      setGitHubConnected(isConnected);
-    });
-  }, []);
-
-  const handleConnectGitHub = () => {
-    localStorage.setItem("github_connected", "true");
-    setGitHubConnected(true);
-  };
-
-  const handleDisconnectGitHub = () => {
-    localStorage.removeItem("github_connected");
-    setGitHubConnected(false);
-  };
 
   useEffect(() => {
     const load = async () => {
@@ -94,33 +84,70 @@ export default function SettingsPage() {
     try {
       const result = await runDecayCheck();
       setDecayResult(result);
+      addToast("Memory decay sweep completed", "success");
     } catch {
       setDecayResult({ forgotten: 0, decayed: 0 });
+      addToast("Failed to run memory decay sweep", "error");
     } finally {
       setDecayRunning(false);
     }
   };
 
-  const handleDecayStartChange = async (val: number) => {
+  const handleDecayStartChange = (val: number) => {
+    if (dragStartDecayRef.current === null) {
+      dragStartDecayRef.current = decayStart;
+    }
     setDecayStart(val);
-    try {
-      await updateDecaySettings({ decayStartDays: val, forgetThresholdDays: forgetThreshold });
-    } catch {}
+
+    if (decayTimerRef.current) clearTimeout(decayTimerRef.current);
+    decayTimerRef.current = setTimeout(async () => {
+      const originalVal = dragStartDecayRef.current;
+      try {
+        await updateDecaySettings({ decayStartDays: val, forgetThresholdDays: forgetThreshold });
+        addToast("Decay settings updated", "success");
+      } catch (err) {
+        if (originalVal !== null) {
+          setDecayStart(originalVal);
+        }
+        addToast("Failed to update decay settings", "error");
+      } finally {
+        dragStartDecayRef.current = null;
+      }
+    }, 500);
   };
 
-  const handleForgetThresholdChange = async (val: number) => {
+  const handleForgetThresholdChange = (val: number) => {
+    if (dragStartForgetRef.current === null) {
+      dragStartForgetRef.current = forgetThreshold;
+    }
     setForgetThreshold(val);
-    try {
-      await updateDecaySettings({ decayStartDays: decayStart, forgetThresholdDays: val });
-    } catch {}
+
+    if (forgetTimerRef.current) clearTimeout(forgetTimerRef.current);
+    forgetTimerRef.current = setTimeout(async () => {
+      const originalVal = dragStartForgetRef.current;
+      try {
+        await updateDecaySettings({ decayStartDays: decayStart, forgetThresholdDays: val });
+        addToast("Pruning threshold updated", "success");
+      } catch (err) {
+        if (originalVal !== null) {
+          setForgetThreshold(originalVal);
+        }
+        addToast("Failed to update pruning threshold", "error");
+      } finally {
+        dragStartForgetRef.current = null;
+      }
+    }, 500);
   };
 
   const handleDeleteSource = useCallback(async (sourceId: string) => {
     try {
       await forgetSource(sourceId);
       setSources((prev) => prev.filter((s) => s.id !== sourceId));
-    } catch {}
-  }, []);
+      addToast("Source document deleted", "success");
+    } catch {
+      addToast("Failed to delete source document", "error");
+    }
+  }, [addToast]);
 
   const handleForgetSelected = useCallback(async () => {
     const ids = Array.from(selectedNodeIds);
@@ -129,8 +156,11 @@ export default function SettingsPage() {
       await Promise.all(ids.map((id) => forgetNode(id)));
       setSelectedNodeIds(new Set());
       setSearchResults((prev) => prev.filter((r) => !ids.includes(r.id)));
-    } catch {}
-  }, [selectedNodeIds]);
+      addToast(`Successfully forgot ${ids.length} nodes`, "success");
+    } catch {
+      addToast("Failed to forget selected nodes", "error");
+    }
+  }, [selectedNodeIds, addToast]);
 
   if (loading) {
     return (
@@ -323,47 +353,6 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* 4. Connected Accounts */}
-        <section>
-          <div className="caption-upper text-muted mb-3.5">Connected Accounts</div>
-          <div className="p-4 sm:p-6 rounded-2xl bg-surface-card border border-hairline shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1C3.68 1 1 3.68 1 7C1 9.85 2.88 12.25 5.47 13.06C5.78 13.12 5.9 12.94 5.9 12.78C5.9 12.64 5.89 12.17 5.89 11.56C4.45 11.88 3.99 11.02 3.99 11.02C3.66 10.19 3.17 10.02 3.17 10.02C2.49 9.68 3.23 9.69 3.23 9.69C3.99 9.75 4.38 10.48 4.38 10.48C5.04 11.62 6.11 11.37 6.56 11.22C6.63 10.73 6.82 10.39 7.04 10.19C5.39 10.02 3.65 9.47 3.65 7.04C3.65 6.35 3.9 5.77 4.34 5.33C4.26 5.16 4.04 4.49 4.42 3.6C4.42 3.6 4.97 3.42 5.9 4.25C6.42 4.1 6.97 4.02 7.5 4.02C8.03 4.02 8.58 4.1 9.1 4.25C10.03 3.42 10.58 3.6 10.58 3.6C10.96 4.49 10.74 5.16 10.66 5.33C11.1 5.77 11.35 6.35 11.35 7.04C11.35 9.48 9.6 10.01 7.95 10.18C8.22 10.42 8.46 10.89 8.46 11.62C8.46 12.66 8.45 13.5 8.45 13.78C8.45 13.94 8.57 14.13 8.88 14.06C11.47 13.25 13.35 10.85 13.35 8C13.35 5.22 11.13 3 8.35 3L7 3.01Z" fill="#777169" />
-                </svg>
-                <span className="text-sm font-semibold text-body-strong">GitHub API integration</span>
-              </div>
-              {gitHubConnected ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-semantic-success font-medium flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-semantic-success animate-pulse" />
-                    Connected
-                  </span>
-                  <button
-                    onClick={handleDisconnectGitHub}
-                    className="text-xs text-muted hover:text-ink hover:underline transition-all cursor-pointer font-medium"
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-soft flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-soft" />
-                    Not Connected
-                  </span>
-                  <button
-                    onClick={handleConnectGitHub}
-                    className="text-xs text-primary hover:text-primary-active hover:underline transition-all cursor-pointer font-semibold"
-                  >
-                    Connect
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   );
